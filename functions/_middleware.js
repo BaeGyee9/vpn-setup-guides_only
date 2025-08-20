@@ -205,12 +205,31 @@ export async function onRequest(context) {
                 // Pass env to callbackQuery object for easier access in handlers
                 callbackQuery.env = env; 
 
-                if (data === 'main_menu') { // Main menu from constants.js
-                    await sendMessage(token, chatId, DEFAULT_WELCOME_MESSAGE, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS });
-                } else if (data === 'menu_support') { // Support menu
-                    await editMessageText(token, chatId, messageId, SUPPORT_MENU_TEXT, 'HTML', { inline_keyboard: SUPPORT_MENU_BUTTONS });
+                // Use editMessageText for menu navigation callbacks where possible
+                if (data === 'main_menu') {
+                    // When going back to main_menu, use editMessageText
+                    try {
+                        await editMessageText(token, chatId, messageId, DEFAULT_WELCOME_MESSAGE, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS });
+                        await answerCallbackQuery(token, callbackQuery.id, "ပင်မ Menu သို့ ပြန်ရောက်ပါပြီ။");
+                    } catch (e) {
+                        console.error(`[onRequest] Error editing message for main_menu: ${e.message}`);
+                        // Fallback to sending new message if edit fails
+                        await sendMessage(token, chatId, DEFAULT_WELCOME_MESSAGE, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS });
+                        await answerCallbackQuery(token, callbackQuery.id, "ပင်မ Menu ကို ဖွင့်မရပါ။ ကျေးဇူးပြု၍ ပြန်လည်စမ်းသပ်ပါ။", true);
+                    }
+                } else if (data === 'menu_support') {
+                    // When going to support menu, use editMessageText
+                    try {
+                        await editMessageText(token, chatId, messageId, SUPPORT_MENU_TEXT, 'HTML', { inline_keyboard: SUPPORT_MENU_BUTTONS });
+                        await answerCallbackQuery(token, callbackQuery.id, "အကူအညီ Menu သို့ ပြောင်းလိုက်ပါပြီ။");
+                    } catch (e) {
+                        console.error(`[onRequest] Error editing message for menu_support: ${e.message}`);
+                        // Fallback to sending new message if edit fails
+                        await sendMessage(token, chatId, SUPPORT_MENU_TEXT, 'HTML', { inline_keyboard: SUPPORT_MENU_BUTTONS });
+                        await answerCallbackQuery(token, callbackQuery.id, "အကူအညီ Menu ကို ဖွင့်မရပါ။ ကျေးဇူးပြု၍ ပြန်လည်စမ်းသပ်ပါ။", true);
+                    }
                 }
-                // VPN Guide Callbacks
+                // VPN Guide Callbacks (these already use editMessageText/deleteMessage+sendPhoto in vpnGuideHandlers.js)
                 else if (data === 'show_vpn_guide_menu') {
                     await handleShowVpnGuideMenu(callbackQuery, token, env);
                 } else if (data.startsWith('show_vpn_guide_')) { // Handles specific steps like 'show_vpn_guide_NETMOD_step_1'
@@ -248,4 +267,3 @@ export async function onRequest(context) {
         return new Response("This is a Telegram bot webhook endpoint. Please send POST requests or access /registerWebhook or /unregisterWebhook.", { status: 200 });
     }
 }
-
