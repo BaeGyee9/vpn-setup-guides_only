@@ -58,7 +58,7 @@ export async function onRequest(context) {
     const url = new URL(request.url);
     const token = env.TELEGRAM_BOT_TOKEN; // Bot token ကို environment variables မှ ရယူသည်။
 
-    console.log(`[onRequest] Received request: ${request.method} ${request.url}`);
+    console.log(`[onRequest] Received request: ${request.method} ${url.pathname}`);
 
     let requestBody = {};
     try {
@@ -146,6 +146,17 @@ export async function onRequest(context) {
 
                 // Store env in message object for easier access in handlers
                 message.env = env;
+
+                // FIX: Handle incoming photos to return file_id for admins
+                if (message.photo && OWNER_ADMIN_IDS.includes(userId)) {
+                    // Get the largest photo available
+                    const fileId = message.photo[message.photo.length - 1].file_id;
+                    console.log(`[onRequest] Admin ${userId} sent photo with file_id: ${fileId}`);
+                    await sendMessage(token, chatId, `✅ သင်ပို့လိုက်သော ပုံ၏ File ID: \n<code>${fileId}</code>`, 'HTML');
+                    return new Response("OK", { status: 200 }); // Process photo and return OK
+                }
+                // If it's a photo but not from an admin, or not a photo, proceed to command handling
+
 
                 // Command Handling
                 if (messageText.startsWith('/')) {
