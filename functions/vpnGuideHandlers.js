@@ -20,7 +20,6 @@ import {
     retrieveData, // Generic retrieve function
     deleteData, // Generic delete function
     listKeys // Generic list keys function
-    // Specific VPN guide functions from dataStorage.js are no longer needed here as generic ones are used directly
 } from './dataStorage.js';
 
 
@@ -52,6 +51,7 @@ async function getAllStepNumbersForApp(env, appCode) {
     const allKeys = await listKeys(env, 'VPN_GUIDE_DATA', prefix);
     const stepNumbers = allKeys.map(key => {
         const parts = key.split(':');
+        // FIX: Ensure parts[2] is always the step number
         return parseInt(parts[2], 10);
     }).filter(num => !isNaN(num)).sort((a, b) => a - b);
     return stepNumbers;
@@ -70,7 +70,6 @@ async function getAllStepNumbersForApp(env, appCode) {
 export async function handleAddVpnGuideCommand(message, token, env) {
     const chatId = message.chat.id;
     const userId = message.from.id;
-    const args = message.text.split(' ');
 
     if (!OWNER_ADMIN_IDS.includes(userId)) {
         await sendMessage(token, chatId, "❌ သင်သည် Admin မဟုတ်ပါ။ ဤ command ကို အသုံးပြုခွင့်မရှိပါ။", 'HTML');
@@ -78,6 +77,7 @@ export async function handleAddVpnGuideCommand(message, token, env) {
     }
 
     // Command parsing logic needs to be more robust for quoted strings
+    // Matches /addvpnguide <app_code> <step_number> "<step_text>" ["<image_file_id>"] ["<download_link>"]
     const regex = /^\/addvpnguide\s+([^\s]+)\s+([0-9]+)\s+"([^"]+)"(?:\s+"([^"]+)")?(?:\s+"([^"]+)")?$/;
     const match = message.text.match(regex);
 
@@ -106,7 +106,7 @@ export async function handleAddVpnGuideCommand(message, token, env) {
         return;
     }
 
-    // FIX: Correct key format: vpn_guide:APPCODE:STEP_NUMBER
+    // Correct key format: vpn_guide:APPCODE:STEP_NUMBER
     const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${stepNumber}`;
     const guideData = {
         text: stepText,
@@ -163,7 +163,6 @@ export async function handleDeleteVpnGuideCommand(message, token, env) {
 
     if (stepNumberToDelete) {
         // Delete specific step
-        // FIX: Correct key format for deletion
         const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${stepNumberToDelete}`;
         const success = await deleteData(env, 'VPN_GUIDE_DATA', fullKey);
         if (success) {
@@ -173,7 +172,6 @@ export async function handleDeleteVpnGuideCommand(message, token, env) {
         }
     } else {
         // Delete all steps for the app code
-        // FIX: Correctly list and delete all steps for an appCode
         const allStepNumbersForApp = await getAllStepNumbersForApp(env, appCode);
         if (allStepNumbersForApp.length === 0) {
             await sendMessage(token, chatId, `❌ <b>${appCode}</b> အတွက် VPN Guide များ ရှာမတွေ့ပါ။`, 'HTML');
@@ -202,8 +200,7 @@ export async function handleDeleteVpnGuideCommand(message, token, env) {
 export async function handleListVpnGuidesCommand(message, token, env) {
     const chatId = message.chat.id;
     const userId = message.from.id;
-    const args = message.text.split(' ').slice(1);
-    const appCodeFilter = args.length > 0 ? args[0].toUpperCase() : null; // This parameter is actually not used now
+    // const args = message.text.split(' ').slice(1); // This is no longer used for filtering in this function
 
     if (!OWNER_ADMIN_IDS.includes(userId)) {
         await sendMessage(token, chatId, "❌ သင်သည် Admin မဟုတ်ပါ။ ဤ command ကို အသုံးပြုခွင့်မရှိပါ။", 'HTML');
@@ -250,7 +247,6 @@ export async function handleListVpnGuidesCommand(message, token, env) {
 
 /**
  * Handles the 'show_vpn_guide_menu' callback query to display available VPN apps.
- * This is the main entry point for users to view guides.
  * MODIFIED: Uses editMessageText to update the previous message.
  * @param {object} callbackQuery - The Telegram callback query object.
  * @param {string} token - The Telegram bot token.
@@ -279,7 +275,8 @@ export async function handleShowVpnGuideMenu(callbackQuery, token, env) {
         appButtons = sortedAppCodes.map(code => [{
             text: code,
             // FIX: Correct callback_data format for showing specific guide
-            callback_data: `show_vpn_guide_app:${code}:step:1` // New format: show_vpn_guide_app:APPCODE:step:1
+            // New format: 'show_vpn_guide:APPCODE:step:1'
+            callback_data: `show_vpn_guide:${code}:step:1`
         }]);
     } else {
         appButtons.push([{
@@ -294,7 +291,7 @@ export async function handleShowVpnGuideMenu(callbackQuery, token, env) {
         ])
     };
 
-    // FIX: Always try to edit the message text first. If it was a photo, it will throw error, then send a new message.
+    // Always try to edit the message text first. If it was a photo, it will throw error, then send a new message.
     try {
         await editMessageText(token, chatId, messageId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup);
     } catch (e) {
@@ -305,21 +302,21 @@ export async function handleShowVpnGuideMenu(callbackQuery, token, env) {
 }
 
 /**
- * Handles the 'show_vpn_guide_app:APPCODE:step:STEP_NUMBER' callback query to display a specific guide step.
+ * Handles the 'show_vpn_guide:APPCODE:step:STEP_NUMBER' callback query to display a specific guide step.
  * MODIFIED: Uses deleteMessage + sendPhoto or editMessageText based on image existence.
  * @param {object} callbackQuery - The Telegram callback query object.
  * @param {string} token - The Telegram bot token.
  * @param {object} env - The Cloudflare environment object.
  */
 export async function handleShowSpecificVpnGuide(callbackQuery, token, env) {
-    const data = callbackQuery.data; // e.g., 'show_vpn_guide_app:NETMOD:step:1'
+    const data = callbackQuery.data; // e.g., 'show_vpn_guide:NETMOD:step:1'
     const chatId = callbackQuery.message.chat.id;
     const messageId = callbackQuery.message.message_id;
 
     // FIX: Correct parsing of appCode and stepNumber from the new callback_data format
-    // Expected format: 'show_vpn_guide_app:APPCODE:step:STEP_NUMBER'
+    // Expected format: 'show_vpn_guide:APPCODE:step:STEP_NUMBER'
     const parts = data.split(':'); // Split by colon
-    if (parts.length !== 5 || parts[0] !== 'show_vpn_guide_app' || parts[2] !== 'step') {
+    if (parts.length !== 5 || parts[0] !== 'show_vpn_guide' || parts[2] !== 'step') {
         console.error(`[handleShowSpecificVpnGuide] Invalid callback data format: ${data}`);
         await answerCallbackQuery(token, callbackQuery.id, "❌ လမ်းညွှန် အချက်အလက် မှားယွင်းနေပါသည်။", true);
         return;
@@ -330,12 +327,12 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env) {
 
     await answerCallbackQuery(token, callbackQuery.id, `📚 ${appCode} Guide Step ${currentStepNumber} ကို ပြသပါမည်။`, true);
 
-    // FIX: Correct key format for retrieving guide data
+    // Correct key format for retrieving guide data
     const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${currentStepNumber}`;
     const guideData = await retrieveData(env, 'VPN_GUIDE_DATA', fullKey);
 
     if (!guideData) {
-        // FIX: If guide not found, send an error message and link to admin
+        // If guide not found, send an error message and link to admin
         await sendMessage(token, chatId, `❌ ${appCode} - Step ${currentStepNumber} ကို ရှာမတွေ့ပါ။ Admin ကို ဆက်သွယ်ပါ။`, 'HTML', {
             inline_keyboard: [
                 [{ text: "👤 Admin ကို ဆက်သွယ်ရန်", url: `https://t.me/${ADMIN_USERNAME.substring(1)}` }],
@@ -345,7 +342,7 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env) {
         return;
     }
 
-    // FIX: Get all step numbers for correct previous/next logic
+    // Get all step numbers for correct previous/next logic
     const allStepNumbersForApp = await getAllStepNumbersForApp(env, appCode);
     const isFirstStep = currentStepNumber === allStepNumbersForApp[0];
     const isLastStep = currentStepNumber === allStepNumbersForApp[allStepNumbersForApp.length - 1];
@@ -360,8 +357,8 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env) {
     if (!isFirstStep && previousStepNumber !== null) {
         navButtons.push({
             text: "⬅️ အရင် Step",
-            // FIX: Correct callback_data format for previous step
-            callback_data: `show_vpn_guide_app:${appCode}:step:${previousStepNumber}`
+            // Correct callback_data format for previous step
+            callback_data: `show_vpn_guide:${appCode}:step:${previousStepNumber}`
         });
     }
 
@@ -369,8 +366,8 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env) {
     if (!isLastStep && nextStepNumber !== null) {
         navButtons.push({
             text: "နောက် Step ➡️",
-            // FIX: Correct callback_data format for next step
-            callback_data: `show_vpn_guide_app:${appCode}:step:${nextStepNumber}`
+            // Correct callback_data format for next step
+            callback_data: `show_vpn_guide:${appCode}:step:${nextStepNumber}`
         });
     }
 
@@ -397,7 +394,7 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env) {
     if (guideData.image_file_id) {
         // Send photo with caption
         try {
-            // FIX: Delete previous message before sending new photo
+            // Delete previous message before sending new photo
             await deleteMessage(token, chatId, messageId);
             await sendPhoto(token, chatId, guideData.image_file_id, captionText, replyMarkup);
         } catch (e) {
