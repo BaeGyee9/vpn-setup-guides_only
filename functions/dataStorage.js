@@ -101,45 +101,97 @@ export async function listKeys(env, namespaceName, prefix = '') {
 }
 
 // --- Welcome Message Storage ---
+/**
+ * Stores the welcome message text in KV.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} messageText - The message text to store.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
 export async function storeWelcomeMessage(env, messageText) {
     return await storeData(env, 'SALES_DATA', WELCOME_MESSAGE_KEY, { text: messageText });
 }
 
+/**
+ * Retrieves the welcome message text from KV.
+ * @param {object} env - The Cloudflare environment object.
+ * @returns {Promise<string|null>} - The welcome message text or null if not found.
+ */
 export async function getWelcomeMessage(env) {
     const data = await retrieveData(env, 'SALES_DATA', WELCOME_MESSAGE_KEY);
     return data ? data.text : null;
 }
 
+/**
+ * Deletes the welcome message from KV.
+ * @param {object} env - The Cloudflare environment object.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
 export async function deleteWelcomeMessage(env) {
     return await deleteData(env, 'SALES_DATA', WELCOME_MESSAGE_KEY);
 }
 
 // --- Welcome Photo Storage ---
+/**
+ * Stores the welcome photo file ID in KV.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} fileId - The Telegram file_id of the photo.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
 export async function storeWelcomePhoto(env, fileId) {
     return await storeData(env, 'SALES_DATA', WELCOME_PHOTO_KEY, { file_id: fileId });
 }
 
+/**
+ * Retrieves the welcome photo file ID from KV.
+ * @param {object} env - The Cloudflare environment object.
+ * @returns {Promise<string|null>} - The welcome photo file ID or null if not found.
+ */
 export async function getWelcomePhoto(env) {
     const data = await retrieveData(env, 'SALES_DATA', WELCOME_PHOTO_KEY);
     return data ? data.file_id : null;
 }
 
+/**
+ * Deletes the welcome photo from KV.
+ * @param {object} env - The Cloudflare environment object.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
 export async function deleteWelcomePhoto(env) {
     return await deleteData(env, 'SALES_DATA', WELCOME_PHOTO_KEY);
 }
 
 
 // --- Payment Details Storage ---
+/**
+ * Stores payment transaction details.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} transactionId - Unique ID for the transaction.
+ * @param {object} details - Object containing payment details.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
 export async function storePaymentDetails(env, transactionId, details) {
     const key = `payment:${transactionId}`;
     return await storeData(env, 'SALES_DATA', key, details);
 }
 
+/**
+ * Retrieves payment transaction details.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} transactionId - Unique ID for the transaction.
+ * @returns {Promise<object|null>} - The payment details object or null.
+ */
 export async function getPaymentDetails(env, transactionId) {
     const key = `payment:${transactionId}`;
     return await retrieveData(env, 'SALES_DATA', key);
 }
 
+/**
+ * Updates the status of a payment transaction.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} transactionId - Unique ID for the transaction.
+ * @param {string} newStatus - The new status to set.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
 export async function updatePaymentStatus(env, transactionId, newStatus) {
     const key = `payment:${transactionId}`;
     const details = await getPaymentDetails(env, transactionId);
@@ -258,6 +310,15 @@ export async function updateVpnKeyStatus(env, fullKey, status, assignedTo = null
 }
 
 // --- User Trial Status Storage ---
+/**
+ * Stores the trial status for a user.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} userId - The user's ID.
+ * @param {boolean} isTrialUsed - Whether the trial has been used.
+ * @param {string|null} trialKeyId - The ID of the trial key used, if any.
+ * @param {string|null} trialUsedAt - ISO string timestamp when trial was used.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
 export async function storeUserTrialStatus(env, userId, isTrialUsed, trialKeyId = null, trialUsedAt = null) {
     const key = `user_trial_status:${userId}`;
     const trialStatusData = {
@@ -268,11 +329,23 @@ export async function storeUserTrialStatus(env, userId, isTrialUsed, trialKeyId 
     return await storeData(env, 'USER_DATA', key, trialStatusData);
 }
 
+/**
+ * Retrieves the trial status for a user.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} userId - The user's ID.
+ * @returns {Promise<object|null>} - The trial status data or null.
+ */
 export async function getUserTrialStatus(env, userId) {
     const key = `user_trial_status:${userId}`;
     return await retrieveData(env, 'USER_DATA', key);
 }
 
+/**
+ * Deletes all associated user data from KV.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} userId - The user's ID.
+ * @returns {Promise<boolean>} - True if any data was deleted, false otherwise.
+ */
 export async function deleteUserDataFromKV(env, userId) {
     const keysToDelete = [
         `user_trial_status:${userId}`,
@@ -409,3 +482,4 @@ export async function listVpnOperatorButtons(env) {
     buttons.sort((a, b) => a.name.localeCompare(b.name));
     return buttons;
 }
+
