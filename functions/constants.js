@@ -1,63 +1,65 @@
 // functions/constants.js
-// VPN Guide Bot အတွက် လိုအပ်သော ကိန်းသေများ (Constants)
 
 // Telegram Bot API base URL
 export const TELEGRAM_API = "https://api.telegram.org/bot";
 
-// Global variable to store bot ID after first fetch for efficient passive mode check
-export let botIdCache = null;
-
 // Bot Developer's Contact Information (Hardcoded for direct contact)
-// VPN Guide Bot အတွက်ဆိုရင် Admin ကို ဆက်သွယ်ဖို့ မလိုအပ်ရင် ဖယ်ထားနိုင်ပါတယ်။
-// ဒါပေမဲ့ /addvpnguide, /deletevpnguide, /listvpnguides command တွေအတွက် Admin ID လိုအပ်ပါတယ်။
-export const ADMIN_USERNAME = "@Zero_Free_Vpn"; // သင့်ရဲ့ Telegram Username ကို ဒီနေရာမှာ ထည့်ပါ။ (ဥပမာ: @Zero_Free_Vpn)
-export const SUPPORT_GROUP_LINK = "https://t.me/zero_freevpn"; // သင့်ရဲ့ Telegram Support Group Link ကို ဒီနေရာမှာ ထည့်ပါ။ (မလိုအပ်ရင် Empty ထားနိုင်ပါတယ်။)
+export const ADMIN_USERNAME = "@Zero_Free_Vpn"; // Your Telegram Username (without @)
+export const SUPPORT_GROUP_LINK = "https://t.me/zero_freevpn"; // Your Telegram Support Group Link
 
-// Bot Owner/Admin User IDs for THIS VPN Guide Bot
-// ဤ ID များသာ /addvpnguide, /deletevpnguide, /listvpnguides command များကို အသုံးပြုနိုင်ပါမည်။
-export const OWNER_ADMIN_IDS = [7576434717, 7240495054]; // <--- သင့်ရဲ့ TELEGRAM USER ID များကို ဒီနေရာမှာ ထည့်ပါ။ (ဥပမာ: [7576434717, 7240495054])
+// Bot Owner/Admin User IDs for THIS Public User Bot - Pre-filled with user's provided ID
+// These IDs will be able to use the /addvpnguide, /delvpnguide etc. commands on THIS bot.
+export const OWNER_ADMIN_IDS = [7576434717, 7240495054]; // <--- REPLACE WITH YOUR OWN TELEGRAM USER IDs (e.g., [123456789, 987654321])
 
-// --- VPN Guide Specific Constants ---
-export const VPN_GUIDE_KEY_PREFIX = "vpn_guide:"; // KV key prefix for VPN usage guides
+// --- Welcome Message Constants ---
+export const WELCOME_MESSAGE_KEY = "bot_welcome_message"; // KV key for welcome message text
+export const WELCOME_PHOTO_KEY = "bot_welcome_photo_file_id"; // KV key for welcome photo file ID
 
-export const VPN_GUIDE_MENU_TEXT = `📚 အောက်ပါ VPN Application များ၏ အသုံးပြုနည်းများကို ရွေးချယ်ကြည့်ရှုနိုင်ပါသည်:`;
+export const DEFAULT_WELCOME_MESSAGE = `
+မောင်သုည - အကောင်းဆုံး နဲ့ မြန်ဆန်သော ဒစ်ဂျစ်တယ် ဝန်ဆောင်မှုများကို အခုပဲ ရယူလိုက်ပါ။
 
-// Back button for VPN Guide steps - always goes back to the main VPN Guide menu
-export const BACK_TO_VPN_GUIDE_MENU_BUTTON = { text: "↩️ နောက်သို့ (လမ်းညွှန်များ)", callback_data: "show_vpn_guide_menu" };
+<b>✅ VPN Services</b> - အမြန်နှုန်းမြင့် VPN ဝန်ဆောင်မှုများဖြင့် အင်တာနက်လွတ်လပ်စွာသုံးစွဲပါ။
 
-// Public button for VPN Guides for /vpnguides command (and other main menus if needed)
-export const PUBLIC_VPN_GUIDES_BUTTON = { text: "📚 VPN အသုံးပြုနည်းလမ်းညွှန်", callback_data: "show_vpn_guide_menu" };
+<b>✅ MLBB Diamonds</b> - Mobile Legends အတွက် Diamond များကို စျေးနှုန်းချိုသာစွာဖြင့် ရယူလိုက်ပါ။
 
-// Main Menu Buttons for a simplified guide bot (only guide related)
+<b>✅ PUBG UC</b> - PUBG Mobile UC များကို အမြန်ဆုံးပို့ဆောင်ပေးပါသည်။
+
+<b>✅ ငွေလွှဲဝန်ဆောင်မှု</b> - ထိုင်းမှ မြန်မာသို့ လုံခြုံပြီးမြန်ဆန်သော ငွေလွှဲဝန်ဆောင်မှုများ။
+`;
+
+// Default welcome photo (use the uploaded image's file_id)
+// Make sure this file_id is valid and accessible by your bot.
+export const DEFAULT_WELCOME_PHOTO_FILE_ID = "AgACAgUAAxkBAAOFaI6eLO_qfv3h1kByVuYdIDYEpjwAAuXLMRu_1VhUcPOyaFZwVbUBAAMCA... (replace with a real file_id if you want)";
+export const NO_IMAGE_PLACEHOLDER_FILE_ID = "AgACAgUAAxkBAAIHv2iaKHlw-GnO3jlkSrnC... (replace with a real placeholder file_id if you want)"; // Placeholder for images not found
+
+// --- Main Menu Buttons ---
 export const MAIN_MENU_BUTTONS = [
-    [{ text: "📚 VPN အသုံးပြုနည်းလမ်းညွှန်", callback_data: "show_vpn_guide_menu" }],
-    [{ text: "❓ အကူအညီ / ဆက်သွယ်ရန်", callback_data: "menu_support" }]
+    [{ text: "📚 VPN အသုံးပြုနည်းလမ်းညွှန်", callback_data: "show_vpn_guide_menu" }], // Direct to VPN Guide Menu
+    [{ text: "💬 အကူအညီ", callback_data: "menu_support" }] // Support button
 ];
 
-// Support/Contact Menu (simplified)
-export const SUPPORT_MENU_TEXT = `အကူအညီလိုအပ်ပါက သို့မဟုတ် မေးမြန်းလိုပါက <b>Admin</b> ကို ဆက်သွယ်နိုင်ပါတယ်:
+// --- Support Menu Constants ---
+export const SUPPORT_MENU_TEXT = `
+မည်သည့် အကူအညီ လိုအပ်ပါက အောက်ပါ လမ်းကြောင်းများမှ ဆက်သွယ်နိုင်ပါသည်။
 
-📞 Admin: ${ADMIN_USERNAME}
-🔗 Support Group: ${SUPPORT_GROUP_LINK}
+<b>👤 Admin ကို တိုက်ရိုက်ဆက်သွယ်ရန်:</b>
+<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_USERNAME}</a>
+
+<b>👥 ပံ့ပိုးကူညီမှု Group သို့ ဝင်ရန်:</b>
+<a href="${SUPPORT_GROUP_LINK}">Group Link</a>
+
+<b>မေးလေ့ရှိသော မေးခွန်းများ (FAQ):</b>
+မကြာမီ လာမည်။
 `;
 export const SUPPORT_MENU_BUTTONS = [
-    [{ text: "↩️ နောက်သို့", callback_data: "main_menu" }] // Back to simplified main menu
+    [{ text: "↩️ နောက်သို့", callback_data: "main_menu" }]
 ];
 
-// Default welcome message for the guide bot
-export const DEFAULT_WELCOME_MESSAGE = `
-မင်္ဂလာပါ! ကျွန်တော်က VPN အသုံးပြုနည်းလမ်းညွှန် Bot ပါ။
+// --- VPN Guide Constants ---
+export const VPN_GUIDE_KEY_PREFIX = "vpn_guide:"; // Key prefix for storing VPN guide steps in KV
+export const VPN_GUIDE_MENU_TEXT = "📚 <b>အောက်ပါ VPN Application များ၏ အသုံးပြုနည်းများကို ရွေးချယ်ကြည့်ရှုနိုင်ပါသည်:</b>";
+export const PUBLIC_VPN_GUIDES_BUTTON = { text: "📚 VPN အသုံးပြုနည်းလမ်းညွှန်ကို ကြည့်ရန်", callback_data: "show_vpn_guide_menu" };
+export const BACK_TO_VPN_GUIDE_MENU_BUTTON = { text: "↩️ နောက်သို့ (VPN Guide Menu)", callback_data: "show_vpn_guide_menu" };
 
-အောက်ပါခလုတ်ကို နှိပ်ပြီး VPN Application များ၏ အသုံးပြုနည်းများကို လေ့လာနိုင်ပါတယ်:
-`;
-
-// Placeholder for a generic "no image" file ID (if needed for guides)
-export const NO_IMAGE_PLACEHOLDER_FILE_ID = "AgACAgUAAxkBAAOFaI6eLO_qfv3h1kByVuYdIDYEpjwAAuXLMRu_1VhUcPOyaFZwVbUBAAMCAAN4AAM2BA"; // သင်နှစ်သက်ရာ ပုံတစ်ပုံ၏ File ID ကို ထည့်ပါ။
-
-// REMOVED: Sales-related constants (KBANK_ACCOUNT_NAME, KBANK_ACCOUNT_NUMBER, KBANK_QR_CODE_FILE_ID, KBANK_QR_CODE_URL,
-// MAIN_MENU_TEXT (replaced with simplified one), VPN_MENU_TEXT, MLBB_MENU_TEXT, PUBG_MENU_TEXT, MONEY_TRANSFER_TEXT,
-// TRIAL_VPN_DURATION_HOURS, TRIAL_VPN_COOLDOWN_DAYS, TRIAL_VPN_LIMIT_PER_USER, TRIAL_VPN_KEY_PREFIX, USER_TRIAL_STATUS_PREFIX,
-// PUBLIC_BOT_ADMIN_COMMANDS (replaced with simplified list), BLOCKED_DOMAINS, BLOCKED_APP_IDS, BLOCKED_KEYWORDS_REGEX,
-// VIEW_PAYMENT_BUTTON, WELCOME_MESSAGE_KEY, WELCOME_PHOTO_KEY, DEFAULT_WELCOME_MESSAGE (replaced),
-// DEFAULT_WELCOME_PHOTO_FILE_ID).
-
+// Empty constant for BOT_API_KEY as it's not directly used here
+export const BOT_API_KEY = ""; 
