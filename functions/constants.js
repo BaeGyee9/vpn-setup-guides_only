@@ -10,12 +10,12 @@ export let botIdCache = null;
 // Bot Developer's Contact Information (Hardcoded for direct contact)
 // VPN Guide Bot အတွက်ဆိုရင် Admin ကို ဆက်သွယ်ဖို့ မလိုအပ်ရင် ဖယ်ထားနိုင်ပါတယ်။
 // ဒါပေမဲ့ /addvpnguide, /deletevpnguide, /listvpnguides command တွေအတွက် Admin ID လိုအပ်ပါတယ်။
-export const ADMIN_USERNAME = "@YourAdminUsername"; // သင့်ရဲ့ Telegram Username ကို ဒီနေရာမှာ ထည့်ပါ။ (ဥပမာ: @Zero_Free_Vpn)
-export const SUPPORT_GROUP_LINK = "https://t.me/your_support_group"; // သင့်ရဲ့ Telegram Support Group Link ကို ဒီနေရာမှာ ထည့်ပါ။ (မလိုအပ်ရင် Empty ထားနိုင်ပါတယ်။)
+export const ADMIN_USERNAME = "@Zero_Free_Vpn"; // သင့်ရဲ့ Telegram Username ကို ဒီနေရာမှာ ထည့်ပါ။ (ဥပမာ: @Zero_Free_Vpn)
+export const SUPPORT_GROUP_LINK = "https://t.me/zero_freevpn"; // သင့်ရဲ့ Telegram Support Group Link ကို ဒီနေရာမှာ ထည့်ပါ။ (မလိုအပ်ရင် Empty ထားနိုင်ပါတယ်။)
 
 // Bot Owner/Admin User IDs for THIS VPN Guide Bot
 // ဤ ID များသာ /addvpnguide, /deletevpnguide, /listvpnguides command များကို အသုံးပြုနိုင်ပါမည်။
-export const OWNER_ADMIN_IDS = [123456789, 987654321]; // <--- သင့်ရဲ့ TELEGRAM USER ID များကို ဒီနေရာမှာ ထည့်ပါ။ (ဥပမာ: [7576434717, 7240495054])
+export const OWNER_ADMIN_IDS = [7576434717, 7240495054]; // <--- သင့်ရဲ့ TELEGRAM USER ID များကို ဒီနေရာမှာ ထည့်ပါ။ (ဥပမာ: [7576434717, 7240495054])
 
 // --- VPN Guide Specific Constants ---
 export const VPN_GUIDE_KEY_PREFIX = "vpn_guide:"; // KV key prefix for VPN usage guides
