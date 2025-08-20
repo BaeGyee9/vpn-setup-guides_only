@@ -1,13 +1,11 @@
 // functions/dataStorage.js
-// VPN Guide Bot အတွက် အချက်အလက် သိမ်းဆည်းခြင်းနှင့် ပြန်လည်ရယူခြင်း (KV Storage)
 
-import { VPN_GUIDE_KEY_PREFIX } from './constants.js'; // VPN Guide အတွက် Prefix ကို import လုပ်ပါ။
-// REMOVED: WELCOME_MESSAGE_KEY, WELCOME_PHOTO_KEY, etc. from constants import as they are not needed for guide bot.
+import { WELCOME_MESSAGE_KEY, WELCOME_PHOTO_KEY, VPN_GUIDE_KEY_PREFIX } from './constants.js';
 
 /**
  * Stores general data in the specified KV namespace.
- * @param {object} env - The Cloudflare environment object (e.g., context.env).
- * @param {string} namespaceName - The name of the KV namespace (e.g., 'VPN_GUIDE_DATA').
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} namespaceName - The name of the KV namespace (e.g., 'USER_DATA', 'SALES_DATA', 'VPN_GUIDE_DATA').
  * @param {string} key - The unique key for the data.
  * @param {object} data - The object to store.
  * @returns {Promise<boolean>} - True if successful, false otherwise.
@@ -20,7 +18,6 @@ export async function storeData(env, namespaceName, key, data) {
         return false;
     }
     try {
-        // Data ကို JSON string အဖြစ်ပြောင်းပြီး သိမ်းဆည်းခြင်း။
         await kvNamespace.put(key, JSON.stringify(data));
         console.log(`[storeData] Stored data in '${namespaceName}' for key: ${key}`);
         return true;
@@ -33,9 +30,9 @@ export async function storeData(env, namespaceName, key, data) {
 /**
  * Retrieves general data from the specified KV namespace.
  * @param {object} env - The Cloudflare environment object.
- * @param {string} namespaceName - The name of the KV namespace (e.g., 'VPN_GUIDE_DATA').
+ * @param {string} namespaceName - The name of the KV namespace.
  * @param {string} key - The unique key for the data.
- * @returns {Promise<object|null>} - The retrieved data object or null if not found/error.
+ * @returns {Promise<object|null>} - The retrieved object or null if not found/error.
  */
 export async function retrieveData(env, namespaceName, key) {
     console.log(`[retrieveData] Attempting to retrieve data from '${namespaceName}' for key: ${key}`);
@@ -45,7 +42,6 @@ export async function retrieveData(env, namespaceName, key) {
         return null;
     }
     try {
-        // Data ကို JSON အဖြစ် ပြန်ပြောင်းပြီး ရယူခြင်း။
         const data = await kvNamespace.get(key, { type: 'json' });
         console.log(`[retrieveData] Retrieved data for key ${key}:`, data);
         return data;
@@ -58,8 +54,8 @@ export async function retrieveData(env, namespaceName, key) {
 /**
  * Deletes data from the specified KV namespace.
  * @param {object} env - The Cloudflare environment object.
- * @param {string} namespaceName - The name of the KV namespace (e.g., 'VPN_GUIDE_DATA').
- * @param {string} key - The unique key of the data to delete.
+ * @param {string} namespaceName - The name of the KV namespace.
+ * @param {string} key - The unique key for the data to delete.
  * @returns {Promise<boolean>} - True if successful, false otherwise.
  */
 export async function deleteData(env, namespaceName, key) {
@@ -71,7 +67,7 @@ export async function deleteData(env, namespaceName, key) {
     }
     try {
         await kvNamespace.delete(key);
-        console.log(`[deleteData] Deleted data for key: ${key}`);
+        console.log(`[deleteData] Deleted data from '${namespaceName}' for key: ${key}`);
         return true;
     } catch (error) {
         console.error(`[deleteData] Error deleting data from '${namespaceName}' for key ${key}:`, error);
@@ -80,126 +76,336 @@ export async function deleteData(env, namespaceName, key) {
 }
 
 /**
- * Lists keys within a specified prefix in a KV namespace.
+ * Lists all keys with a given prefix in the specified KV namespace.
  * @param {object} env - The Cloudflare environment object.
  * @param {string} namespaceName - The name of the KV namespace.
  * @param {string} prefix - The prefix to filter keys by.
  * @returns {Promise<Array<string>>} - An array of full keys (strings).
  */
 export async function listKeys(env, namespaceName, prefix = '') {
-    console.log(`[listKeys] Attempting to list keys with prefix '${prefix}' from '${namespaceName}'.`);
+    console.log(`[listKeys] Attempting to list keys in '${namespaceName}' with prefix: ${prefix}`);
     const kvNamespace = env[namespaceName];
     if (!kvNamespace) {
         console.error(`[listKeys] KV namespace '${namespaceName}' is not bound. Cannot list keys.`);
         return [];
     }
     try {
-        let keys = [];
-        let cursor = undefined;
-        do {
-            const listResult = await kvNamespace.list({ prefix: prefix, cursor: cursor });
-            keys = keys.concat(listResult.keys.map(key => key.name));
-            cursor = listResult.list_complete ? undefined : listResult.cursor;
-        } while (cursor);
-        console.log(`[listKeys] Found ${keys.length} keys with prefix '${prefix}'.`);
-        return keys;
+        const { keys } = await kvNamespace.list({ prefix: prefix });
+        const fullKeys = keys.map(key => key.name);
+        console.log(`[listKeys] Found ${fullKeys.length} keys with prefix '${prefix}'.`);
+        return fullKeys;
     } catch (error) {
-        console.error(`[listKeys] Error listing keys with prefix '${prefix}' from '${namespaceName}':`, error);
+        console.error(`[listKeys] Error listing keys in '${namespaceName}' with prefix ${prefix}:`, error);
         return [];
     }
 }
 
+// --- Welcome Message Storage ---
+export async function storeWelcomeMessage(env, messageText) {
+    return await storeData(env, 'SALES_DATA', WELCOME_MESSAGE_KEY, { text: messageText });
+}
+
+export async function getWelcomeMessage(env) {
+    const data = await retrieveData(env, 'SALES_DATA', WELCOME_MESSAGE_KEY);
+    return data ? data.text : null;
+}
+
+export async function deleteWelcomeMessage(env) {
+    return await deleteData(env, 'SALES_DATA', WELCOME_MESSAGE_KEY);
+}
+
+// --- Welcome Photo Storage ---
+export async function storeWelcomePhoto(env, fileId) {
+    return await storeData(env, 'SALES_DATA', WELCOME_PHOTO_KEY, { file_id: fileId });
+}
+
+export async function getWelcomePhoto(env) {
+    const data = await retrieveData(env, 'SALES_DATA', WELCOME_PHOTO_KEY);
+    return data ? data.file_id : null;
+}
+
+export async function deleteWelcomePhoto(env) {
+    return await deleteData(env, 'SALES_DATA', WELCOME_PHOTO_KEY);
+}
+
+
+// --- Payment Details Storage ---
+export async function storePaymentDetails(env, transactionId, details) {
+    const key = `payment:${transactionId}`;
+    return await storeData(env, 'SALES_DATA', key, details);
+}
+
+export async function getPaymentDetails(env, transactionId) {
+    const key = `payment:${transactionId}`;
+    return await retrieveData(env, 'SALES_DATA', key);
+}
+
+export async function updatePaymentStatus(env, transactionId, newStatus) {
+    const key = `payment:${transactionId}`;
+    const details = await getPaymentDetails(env, transactionId);
+    if (details) {
+        details.status = newStatus;
+        return await storeData(env, 'SALES_DATA', key, details);
+    }
+    return false;
+}
+
+// --- VPN Key Storage (MODIFIED to include operator_code) ---
 /**
- * Stores a VPN usage guide step.
+ * Stores a VPN key with its type, content, and initial status.
+ * Key format: vpn_key:<operator_code>:<key_type>:<unique_id>
  * @param {object} env - The Cloudflare environment object.
- * @param {string} appCode - The code for the VPN app (e.g., 'NETMOD').
- * @param {number} stepNumber - The step number.
- * @param {object} guideData - The guide data object { text, image_file_id, download_link }.
- * @returns {Promise<boolean>} - True if successful, false otherwise.
+ * @param {string} operatorCode - The operator code (e.g., 'DTAC', 'TRUE').
+ * @param {string} keyType - The type of VPN key (e.g., 'DNS_30DAY', 'SSH_7DAY').
+ * @param {string} keyContent - The actual VPN key content.
+ * @returns {Promise<string|null>} - The unique ID of the stored key, or null if failed.
  */
-export async function storeVpnGuide(env, appCode, stepNumber, guideData) {
-    const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${stepNumber}`;
-    return await storeData(env, 'VPN_GUIDE_DATA', fullKey, guideData);
+export async function storeVpnKey(env, operatorCode, keyType, keyContent) {
+    const uniqueId = Math.random().toString(36).substring(2, 15); // Simple unique ID
+    const fullKey = `vpn_key:${operatorCode}:${keyType}:${uniqueId}`;
+    const keyData = {
+        key: keyContent,
+        status: 'available', // 'available', 'sold', 'trial'
+        assigned_to: null,
+        expiration_time: null,
+        created_at: new Date().toISOString()
+    };
+    const success = await storeData(env, 'SALES_DATA', fullKey, keyData);
+    return success ? uniqueId : null;
 }
 
 /**
- * Retrieves a VPN usage guide step.
+ * Retrieves a VPN key by its full key (e.g., 'vpn_key:DTAC:DNS_30DAY:abc123def456').
  * @param {object} env - The Cloudflare environment object.
- * @param {string} appCode - The code for the VPN app.
- * @param {number} stepNumber - The step number.
- * @returns {Promise<object|null>} - The guide data object or null.
+ * @param {string} fullKey - The full key of the VPN key.
+ * @returns {Promise<object|null>} - The VPN key data, or null.
  */
-export async function getVpnGuide(env, appCode, stepNumber) {
-    const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${stepNumber}`;
-    return await retrieveData(env, 'VPN_GUIDE_DATA', fullKey);
+export async function getVpnKey(env, fullKey) {
+    return await retrieveData(env, 'SALES_DATA', fullKey);
 }
 
 /**
- * Deletes a VPN usage guide step.
+ * Retrieves a VPN key's full data by its unique ID.
+ * This function will search across all operator_code and key_type prefixes.
  * @param {object} env - The Cloudflare environment object.
- * @param {string} appCode - The code for the VPN app.
- * @param {number} stepNumber - The step number.
- * @returns {Promise<boolean>} - True if successful, false otherwise.
+ * @param {string} uniqueId - The unique ID of the key (the last part of the full key).
+ * @returns {Promise<{fullKey: string, vpnKeyData: object}|null>} - The full key and key data, or null.
  */
-export async function deleteVpnGuide(env, appCode, stepNumber) {
-    const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${stepNumber}`;
-    return await deleteData(env, 'VPN_GUIDE_DATA', fullKey);
-}
-
-/**
- * Lists all VPN guide steps for a given app code, or all app codes if no appCode is provided.
- * @param {object} env - The Cloudflare environment object.
- * @param {string|null} appCode - Optional: The app code to filter by.
- * @returns {Promise<Array<object>>} - An array of guide objects { appCode, stepNumber, text, image_file_id, download_link }.
- */
-export async function listVpnGuides(env, appCode = null) {
-    const prefix = appCode ? `${VPN_GUIDE_KEY_PREFIX}${appCode}:` : VPN_GUIDE_KEY_PREFIX;
-    const allKeys = await listKeys(env, 'VPN_GUIDE_DATA', prefix);
-    const guides = [];
-    const uniqueAppCodes = new Set(); // For listing only app codes when no appCode is specified
-
+export async function getVpnKeyByUniqueId(env, uniqueId) {
+    // List all vpn_key prefixes and iterate to find the uniqueId
+    const allKeys = await listKeys(env, 'SALES_DATA', 'vpn_key:'); // List all keys starting with vpn_key:
     for (const fullKey of allKeys) {
-        const parts = fullKey.split(':'); // e.g., vpn_guide:NETMOD:1
-        if (parts.length >= 3) {
-            const currentAppCode = parts[1];
-            const currentStepNumber = parseInt(parts[2], 10);
-            if (!isNaN(currentStepNumber)) {
-                // If specific appCode is requested, fetch and add full guide data
-                if (appCode) {
-                    const guideData = await retrieveData(env, 'VPN_GUIDE_DATA', fullKey);
-                    if (guideData) {
-                        guides.push({
-                            appCode: currentAppCode,
-                            stepNumber: currentStepNumber,
-                            text: guideData.text,
-                            image_file_id: guideData.image_file_id || null,
-                            download_link: guideData.download_link || null
-                        });
-                    }
-                } else {
-                    // If no appCode is specified, just add unique app codes
-                    uniqueAppCodes.add(currentAppCode);
-                }
+        const parts = fullKey.split(':');
+        // Ensure it's a valid VPN key format and the last part matches uniqueId
+        if (parts.length === 4 && parts[3] === uniqueId) {
+            const vpnKeyData = await getVpnKey(env, fullKey);
+            if (vpnKeyData) {
+                return { fullKey: fullKey, vpnKeyData: vpnKeyData };
             }
         }
     }
-
-    // If no appCode was specified, return a list of unique app codes found
-    if (!appCode) {
-        return Array.from(uniqueAppCodes).map(code => ({ appCode: code }));
-    }
-
-    // Sort steps by stepNumber if a specific appCode was requested
-    guides.sort((a, b) => a.stepNumber - b.stepNumber);
-    return guides;
+    return null;
 }
 
-// REMOVED: All sales-related data storage functions like:
-// - storePaymentDetails, getPaymentDetails, updatePaymentStatus
-// - storeVpnKey, getVpnKey, updateVpnKeyStatus
-// - storeUserTrialStatus, getUserTrialStatus
-// - setProductPrice, deleteProductPrice, listProducts
-// - storeWelcomeMessage, getWelcomeMessage, deleteWelcomeMessage
-// - storeWelcomePhoto, getWelcomePhoto, deleteWelcomePhoto
-// - storeVpnOperatorButton, getVpnOperatorButton, deleteVpnOperatorButton, listVpnOperatorButtons
 
+/**
+ * Deletes a VPN key by its full key (e.g., 'vpn_key:DTAC:DNS_30DAY:abc123def456').
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} keyId - The full key of the VPN key.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
+export async function deleteVpnKey(env, keyId) {
+    // For deletion, if a user provides only the unique ID, we need to find its full key.
+    // However, the admin command /delkey <key_id> expects the full key.
+    // If you want /delkey to accept only the uniqueId, you'd need to modify its handler
+    // to call getVpnKeyByUniqueId first, then use the returned fullKey.
+    // For now, assuming keyId is the fullKey or a unique ID that getVpnKeyByUniqueId can find.
+    
+    // Check if the provided keyId is a fullKey or just the unique ID
+    let actualKeyToDelete = keyId;
+    if (!keyId.startsWith(VPN_GUIDE_KEY_PREFIX)) { // Check if it looks like a full VPN key or just unique ID
+        const foundKey = await getVpnKeyByUniqueId(env, keyId);
+        if (foundKey) {
+            actualKeyToDelete = foundKey.fullKey;
+        } else {
+            // If it's not a full key and not a unique ID that we can find, it doesn't exist.
+            console.warn(`[deleteVpnKey] Key ${keyId} not found as full key or unique ID.`);
+            return false;
+        }
+    }
+    
+    return await deleteData(env, 'SALES_DATA', actualKeyToDelete);
+}
+
+/**
+ * Updates the status of a VPN key.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} fullKey - The full key of the VPN key.
+ * @param {string} status - The new status ('available', 'sold', 'trial').
+ * @param {string|null} assignedTo - User ID assigned to, or null.
+ * @param {number|null} expirationTime - Unix timestamp in seconds for expiration, or null.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
+export async function updateVpnKeyStatus(env, fullKey, status, assignedTo = null, expirationTime = null) {
+    const keyData = await getVpnKey(env, fullKey);
+    if (keyData) {
+        keyData.status = status;
+        keyData.assigned_to = assignedTo;
+        keyData.expiration_time = expirationTime;
+        return await storeData(env, 'SALES_DATA', fullKey, keyData);
+    }
+    return false;
+}
+
+// --- User Trial Status Storage ---
+export async function storeUserTrialStatus(env, userId, isTrialUsed, trialKeyId = null, trialUsedAt = null) {
+    const key = `user_trial_status:${userId}`;
+    const trialStatusData = {
+        is_trial_used: isTrialUsed,
+        trial_key_id: trialKeyId,
+        trial_used_at: trialUsedAt
+    };
+    return await storeData(env, 'USER_DATA', key, trialStatusData);
+}
+
+export async function getUserTrialStatus(env, userId) {
+    const key = `user_trial_status:${userId}`;
+    return await retrieveData(env, 'USER_DATA', key);
+}
+
+export async function deleteUserDataFromKV(env, userId) {
+    const keysToDelete = [
+        `user_trial_status:${userId}`,
+        `user_data:${userId}`, // Assuming general user data is stored here
+        // Add other user-specific keys if they exist, e.g., pending payments
+    ];
+    let successCount = 0;
+    for (const key of keysToDelete) {
+        const success = await deleteData(env, 'USER_DATA', key); // Assuming user data is in 'USER_DATA' KV
+        if (success) successCount++;
+    }
+    console.log(`[deleteUserDataFromKV] Deleted ${successCount} user data keys for user ${userId}.`);
+    return successCount > 0;
+}
+
+
+// --- Product Price Management (MODIFIED to include operator_code for VPN) ---
+/**
+ * Sets or updates the price and details for a product.
+ * Key format: product_price:<type>:<product_id>
+ * For VPN: product_price:vpn:<operator_code>_<key_type>
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} itemType - The type of item ('mlbb', 'pubg', 'vpn').
+ * @param {string} productId - The unique ID of the product. For VPN, this is `operator_code`_`key_type`.
+ * @param {string} name - The display name of the product.
+ * @param {string} price - The price string (e.g., "50 Baht", "2,000 MMK").
+ * @param {string|null} fileId - Optional: Telegram file_id for the product's image.
+ * @param {string|null} description - Optional: Detailed description of the product.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
+export async function setProductPrice(env, itemType, productId, name, price, fileId = null, description = null) {
+    const key = `product_price:${itemType}:${productId}`;
+    const productData = {
+        item_type: itemType,
+        product_id: productId, // Store the raw product ID (or combined for VPN)
+        name: name,
+        price: price,
+        file_id: fileId,
+        description: description
+    };
+    return await storeData(env, 'SALES_DATA', key, productData);
+}
+
+/**
+ * Deletes a product's price and details.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} itemType - The type of item.
+ * @param {string} productId - The unique ID of the product. For VPN, this is `operator_code`_`key_type`.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
+export async function deleteProductPrice(env, itemType, productId) {
+    const key = `product_price:${itemType}:${productId}`;
+    return await deleteData(env, 'SALES_DATA', key);
+}
+
+/**
+ * Lists all products for a given item type.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} itemType - The type of item to list.
+ * @returns {Promise<Array<object>>} - An array of product objects.
+ */
+export async function listProducts(env, itemType) {
+    const prefix = `product_price:${itemType}:`;
+    const allKeys = await listKeys(env, 'SALES_DATA', prefix);
+    const products = [];
+    for (const fullKey of allKeys) {
+        const productData = await retrieveData(env, 'SALES_DATA', fullKey);
+        if (productData) {
+            products.push(productData);
+        }
+    }
+    // Sort by name for consistent display
+    products.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return products;
+}
+
+// --- VPN Operator Button Storage (NEW) ---
+/**
+ * Stores an operator button's name.
+ * Key format: vpn_operator_button:<operator_code>
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} operatorCode - The unique code for the operator (e.g., 'DTAC', 'TRUE').
+ * @param {string} operatorName - The display name of the operator (e.g., 'DTAC', 'True Move H').
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
+export async function storeVpnOperatorButton(env, operatorCode, operatorName) {
+    const fullKey = `vpn_operator_button:${operatorCode}`;
+    const buttonData = {
+        code: operatorCode,
+        name: operatorName
+    };
+    return await storeData(env, 'SALES_DATA', fullKey, buttonData);
+}
+
+/**
+ * Retrieves an operator button by its code.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} operatorCode - The unique code for the operator.
+ * @returns {Promise<object|null>} - The operator button data or null.
+ */
+export async function getVpnOperatorButton(env, operatorCode) {
+    const fullKey = `vpn_operator_button:${operatorCode}`;
+    return await retrieveData(env, 'SALES_DATA', fullKey);
+}
+
+/**
+ * Deletes an operator button.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} operatorCode - The unique code for the operator.
+ * @returns {Promise<boolean>} - True if successful, false otherwise.
+ */
+export async function deleteVpnOperatorButton(env, operatorCode) {
+    const fullKey = `vpn_operator_button:${operatorCode}`;
+    return await deleteData(env, 'SALES_DATA', fullKey);
+}
+
+/**
+ * Lists all stored VPN operator buttons.
+ * @param {object} env - The Cloudflare environment object.
+ * @returns {Promise<Array<object>>} - An array of operator button objects.
+ */
+export async function listVpnOperatorButtons(env) {
+    const prefix = `vpn_operator_button:`;
+    const allKeys = await listKeys(env, 'SALES_DATA', prefix);
+    const buttons = [];
+    for (const fullKey of allKeys) {
+        const buttonData = await retrieveData(env, 'SALES_DATA', fullKey);
+        if (buttonData) {
+            // Ensure buttonData contains the expected 'code' and 'name' properties
+            buttons.push({ code: buttonData.code, name: buttonData.name });
+        }
+    }
+    // Sort alphabetically by name for consistent display
+    buttons.sort((a, b) => a.name.localeCompare(b.name));
+    return buttons;
+}
