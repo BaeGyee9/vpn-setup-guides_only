@@ -19,23 +19,28 @@ import {
     getMe,
     answerCallbackQuery,
     editMessageText,
-    deleteMessage
+    deleteMessage,
+    sendPhoto // sendPhoto ကိုလည်း import လုပ်ထားရပါမယ်
 } from './telegramHelpers.js';
 
 // dataStorage.js မှ functions များကို import လုပ်ပါ။
 import {
     getWelcomeMessage,
-    getWelcomePhoto
+    getWelcomePhoto,
+    storeWelcomeMessage, // NEW: Welcome Message ကို သိမ်းဆည်းရန်
+    deleteWelcomeMessage, // NEW: Welcome Message ကို ဖျက်ရန်
+    storeWelcomePhoto, // NEW: Welcome Photo ကို သိမ်းဆည်းရန်
+    deleteWelcomePhoto // NEW: Welcome Photo ကို ဖျက်ရန်
 } from './dataStorage.js';
 
 // vpnGuideHandlers.js မှ VPN Guide logic function များကို import လုပ်ပါ။
 import {
     handleAddVpnGuideCommand,
-    handleDelVpnGuideCommand, // <-- CORRECTED FUNCTION NAME IMPORT
+    handleDelVpnGuideCommand,
     handleListVpnGuidesCommand,
     handleShowVpnGuideMenu,
     handleShowSpecificVpnGuide,
-    handleAddVpnGuideDownloadCommand // NEW: Import for download link command
+    handleAddVpnGuideDownloadCommand
 } from './vpnGuideHandlers.js';
 
 // Global variable to store bot ID after first fetch for efficient caching
@@ -167,6 +172,7 @@ export async function onRequest(context) {
                 // Command Handling
                 if (messageText.startsWith('/')) {
                     const command = messageText.split(' ')[0].toLowerCase();
+                    const args = messageText.split(' ').slice(1).join(' '); // Get arguments after the command
 
                     // Public Commands (accessible by anyone)
                     if (command === '/start' || command === '/menu' || command === '/shop') {
@@ -174,8 +180,10 @@ export async function onRequest(context) {
                         const customWelcomeMessage = await getWelcomeMessage(env);
                         const customWelcomePhotoFileId = await getWelcomePhoto(env);
 
-                        const finalWelcomeMessage = customWelcomeMessage || DEFAULT_WELCOME_MESSAGE;
-                        const finalWelcomePhotoFileId = customWelcomePhotoFileId; // Only use if explicitly set
+                        // Welcome Message မှာ Admin Username ကို ထည့်သွင်းရန်
+                        const finalWelcomeMessage = (customWelcomeMessage || DEFAULT_WELCOME_MESSAGE) +
+                                                    `\n\n<b>Admin:</b> <a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_USERNAME}</a>`;
+                        const finalWelcomePhotoFileId = customWelcomePhotoFileId;
 
                         const replyMarkup = {
                             inline_keyboard: MAIN_MENU_BUTTONS
@@ -185,7 +193,11 @@ export async function onRequest(context) {
                             // Send photo with welcome message as caption
                             await sendPhoto(token, chatId, finalWelcomePhotoFileId, finalWelcomeMessage, null, botKeyValue);
                             // Then send a separate message with the main menu buttons
-                            await sendMessage(token, chatId, MAIN_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
+                            // Note: Telegram doesn't allow buttons on photos directly via sendPhoto for all cases reliably
+                            // So, sending a separate message for buttons is a workaround.
+                            // If you want buttons on the photo, you might need to use editMessageCaption later or keep it simple.
+                            // For now, sending an empty message with buttons after the photo.
+                            await sendMessage(token, chatId, " ", 'HTML', replyMarkup, botKeyValue); // Send empty message with buttons
                         } else {
                             // If no photo, just send the welcome message text with main menu buttons
                             await sendMessage(token, chatId, finalWelcomeMessage, 'HTML', replyMarkup, botKeyValue);
@@ -205,14 +217,56 @@ export async function onRequest(context) {
                             case '/addvpnguide':
                                 await handleAddVpnGuideCommand(message, token, env, botKeyValue);
                                 break;
-                            case '/delvpnguide': // Corrected function name
+                            case '/delvpnguide':
                                 await handleDelVpnGuideCommand(message, token, env, botKeyValue);
                                 break;
                             case '/listvpnguides':
                                 await handleListVpnGuidesCommand(message, token, env, botKeyValue);
                                 break;
-                            case '/addvpnguidedownload': // New command for download link
+                            case '/addvpnguidedownload':
                                 await handleAddVpnGuideDownloadCommand(message, token, env, botKeyValue);
+                                break;
+                            case '/setwelcomephoto': // NEW: Set Welcome Photo command
+                                if (args) {
+                                    const fileId = args.trim();
+                                    const success = await storeWelcomePhoto(env, fileId);
+                                    if (success) {
+                                        await sendMessage(token, chatId, `✅ Welcome Photo File ID <b>${fileId}</b> ကို အောင်မြင်စွာ သိမ်းဆည်းလိုက်ပါပြီ။`, 'HTML', null, botKeyValue);
+                                    } else {
+                                        await sendMessage(token, chatId, "❌ Welcome Photo သိမ်းဆည်းရာတွင် အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။", 'HTML', null, botKeyValue);
+                                    }
+                                } else {
+                                    await sendMessage(token, chatId, "❌ `/setwelcomephoto <file_id>` ပုံစံ မှန်ကန်စွာ ထည့်သွင်းပါ။", 'HTML', null, botKeyValue);
+                                }
+                                break;
+                            case '/delwelcomephoto': // NEW: Delete Welcome Photo command
+                                const deletePhotoSuccess = await deleteWelcomePhoto(env);
+                                if (deletePhotoSuccess) {
+                                    await sendMessage(token, chatId, "✅ Welcome Photo ကို အောင်မြင်စွာ ဖျက်လိုက်ပါပြီ။", 'HTML', null, botKeyValue);
+                                } else {
+                                    await sendMessage(token, chatId, "❌ Welcome Photo ဖျက်ရာတွင် အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။", 'HTML', null, botKeyValue);
+                                }
+                                break;
+                            case '/setwelcomemessage': // NEW: Set Welcome Message command
+                                if (args) {
+                                    const messageTextToStore = args; // The rest of the message is the text to store
+                                    const success = await storeWelcomeMessage(env, messageTextToStore);
+                                    if (success) {
+                                        await sendMessage(token, chatId, `✅ Welcome Message ကို အောင်မြင်စွာ သိမ်းဆည်းလိုက်ပါပြီ။`, 'HTML', null, botKeyValue);
+                                    } else {
+                                        await sendMessage(token, chatId, "❌ Welcome Message သိမ်းဆည်းရာတွင် အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။", 'HTML', null, botKeyValue);
+                                    }
+                                } else {
+                                    await sendMessage(token, chatId, "❌ `/setwelcomemessage <message_text>` ပုံစံ မှန်ကန်စွာ ထည့်သွင်းပါ။", 'HTML', null, botKeyValue);
+                                }
+                                break;
+                            case '/delwelcomemessage': // NEW: Delete Welcome Message command
+                                const deleteMessageSuccess = await deleteWelcomeMessage(env);
+                                if (deleteMessageSuccess) {
+                                    await sendMessage(token, chatId, "✅ Welcome Message ကို အောင်မြင်စွာ ဖျက်လိုက်ပါပြီ။", 'HTML', null, botKeyValue);
+                                } else {
+                                    await sendMessage(token, chatId, "❌ Welcome Message ဖျက်ရာတွင် အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။", 'HTML', null, botKeyValue);
+                                }
                                 break;
                             default:
                                 await sendMessage(token, chatId, "❌ မသိသော Admin command ဖြစ်ပါသည်။", 'HTML', null, botKeyValue);
@@ -221,15 +275,22 @@ export async function onRequest(context) {
                     } else {
                         // Default response for non-admin, non-command messages in private chat
                         if (message.chat.type === 'private') {
-                             await sendMessage(token, chatId, DEFAULT_WELCOME_MESSAGE, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS }, botKeyValue);
+                            // Re-use the /start logic to show welcome message with buttons
+                            const customWelcomeMessage = await getWelcomeMessage(env);
+                            const finalWelcomeMessage = (customWelcomeMessage || DEFAULT_WELCOME_MESSAGE) +
+                                                        `\n\n<b>Admin:</b> <a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_USERNAME}</a>`;
+                            await sendMessage(token, chatId, finalWelcomeMessage, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS }, botKeyValue);
                         }
                         console.log(`[onRequest] Ignoring unknown command from non-admin: ${command}`);
                     }
                 } else {
                     // Non-command, non-photo messages (e.g., plain text messages in private chat)
                     if (message.chat.type === 'private') {
-                        // Default response for private chat text messages
-                        await sendMessage(token, chatId, DEFAULT_WELCOME_MESSAGE, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS }, botKeyValue);
+                        // Default response for private chat text messages, re-use /start logic
+                        const customWelcomeMessage = await getWelcomeMessage(env);
+                        const finalWelcomeMessage = (customWelcomeMessage || DEFAULT_WELCOME_MESSAGE) +
+                                                    `\n\n<b>Admin:</b> <a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_USERNAME}</a>`;
+                        await sendMessage(token, chatId, finalWelcomeMessage, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS }, botKeyValue);
                     }
                     console.log("[onRequest] Ignoring non-command, non-photo message.");
                 }
@@ -242,16 +303,15 @@ export async function onRequest(context) {
 
                 // Pass env to callbackQuery object for easier access in handlers
                 callbackQuery.env = env; 
+                callbackQuery.botKeyValue = botKeyValue; // Pass botKeyValue to callbackQuery for unified access
 
                 // Use editMessageText for menu navigation callbacks where possible
                 if (data === 'main_menu') {
                     // Get custom welcome message and photo from KV, or use defaults
                     const customWelcomeMessage = await getWelcomeMessage(env);
-                    const customWelcomePhotoFileId = await getWelcomePhoto(env);
-
-                    const finalWelcomeMessage = customWelcomeMessage || DEFAULT_WELCOME_MESSAGE;
-                    // Note: We don't re-send the photo on every menu callback to avoid complexity.
-                    // If the original message was a photo, it will be deleted and a text message sent.
+                    // Welcome Message မှာ Admin Username ကို ထည့်သွင်းရန်
+                    const finalWelcomeMessage = (customWelcomeMessage || DEFAULT_WELCOME_MESSAGE) +
+                                                `\n\n<b>Admin:</b> <a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_USERNAME}</a>`;
 
                     const replyMarkup = {
                         inline_keyboard: MAIN_MENU_BUTTONS
@@ -265,8 +325,9 @@ export async function onRequest(context) {
                         } catch (e) {
                             console.error(`[onRequest] Failed to delete original photo message ${messageId}: ${e.message}`);
                         }
-                        // Send a new text message
+                        // Send a new text message with the main menu and welcome message
                         await sendMessage(token, chatId, finalWelcomeMessage, 'HTML', replyMarkup, botKeyValue);
+                        await answerCallbackQuery(token, callbackQuery.id, "ပင်မ Menu သို့ ပြန်ရောက်ပါပြီ။");
                     } else {
                         // If no photo, just edit the text message
                         try {
@@ -291,7 +352,20 @@ export async function onRequest(context) {
                 }
                 // VPN Guide Callbacks
                 else if (data === 'show_vpn_guide_menu') {
-                    await handleShowVpnGuideMenu(callbackQuery, token, env, botKeyValue);
+                    // FIX: If the message has a photo when returning to VPN Guide Menu, delete and resend
+                    if (callbackQuery.message.photo) {
+                        try {
+                            await deleteMessage(token, chatId, messageId, botKeyValue);
+                            console.log(`[onRequest] Successfully deleted photo message before showing VPN Guide Menu.`);
+                        } catch (e) {
+                            console.error(`[onRequest] Failed to delete photo message before showing VPN Guide Menu: ${e.message}`);
+                        }
+                        // Then call the handler which will send a new message
+                        await handleShowVpnGuideMenu(callbackQuery, token, env, botKeyValue);
+                    } else {
+                        // If no photo, just handle normally (edit message text)
+                        await handleShowVpnGuideMenu(callbackQuery, token, env, botKeyValue);
+                    }
                 } else if (data.startsWith('show_vpn_guide:')) { // Handles specific steps like 'show_vpn_guide:NETMOD:step:1'
                     await handleShowSpecificVpnGuide(callbackQuery, token, env, botKeyValue);
                 }
@@ -309,7 +383,10 @@ export async function onRequest(context) {
                 if (newChatMember.status === 'member' && newChatMember.user.is_bot && newChatMember.user.id === botInfo.id) {
                     if (chat.type === 'group' || chat.type === 'supergroup') {
                         const welcomeMessage = await getWelcomeMessage(env) || DEFAULT_WELCOME_MESSAGE;
-                        await sendMessage(token, chat.id, welcomeMessage, 'HTML', null, botKeyValue);
+                        // Add admin username to group welcome message
+                        const finalWelcomeMessage = welcomeMessage +
+                                                    `\n\n<b>Admin:</b> <a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_USERNAME}</a>`;
+                        await sendMessage(token, chat.id, finalWelcomeMessage, 'HTML', null, botKeyValue);
                     }
                 } else if (newChatMember.status === 'kicked' || newChatMember.status === 'left') {
                     console.log(`[onRequest] Bot was removed from chat: ${chat.title || chat.id}`);
@@ -328,3 +405,4 @@ export async function onRequest(context) {
         return new Response("This is a Telegram bot webhook endpoint. Please send POST requests or access /registerWebhook or /unregisterWebhook.", { status: 200 });
     }
 }
+
