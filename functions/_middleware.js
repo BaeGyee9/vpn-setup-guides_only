@@ -248,3 +248,4 @@ export async function onRequest(context) {
         return new Response("This is a Telegram bot webhook endpoint. Please send POST requests or access /registerWebhook or /unregisterWebhook.", { status: 200 });
     }
 }
+
