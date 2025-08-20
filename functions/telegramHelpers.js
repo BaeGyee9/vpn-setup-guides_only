@@ -186,3 +186,4 @@ export async function isUserAdmin(token, chatId, userId, isAnonymous = false, se
 
 // REMOVED: deleteUserData, kickChatMember, restrictChatMember, unbanChatMember, unrestrictChatMember, sendDocument
 // These functions are not needed for a standalone VPN Guide bot.
+
