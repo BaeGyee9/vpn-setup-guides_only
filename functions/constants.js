@@ -75,4 +75,3 @@ export const DEFAULT_PLACEHOLDER_IMAGE_FILE_ID = "AgACAgUAAxkBAAP8aKb2x5jT30-r_0
 
 // Empty constant for BOT_API_KEY as it's not directly used here
 export const BOT_API_KEY = "";
-
