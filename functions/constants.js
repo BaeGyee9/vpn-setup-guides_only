@@ -32,7 +32,7 @@ export const DEFAULT_WELCOME_MESSAGE = `
 
 // Default welcome photo (use the uploaded image's file_id)
 // Make sure this file_id is valid and accessible by your bot.
-export const DEFAULT_WELCOME_PHOTO_FILE_ID = "AgACAgUAAxkBAAOFaI6eLO_qfv3h1kByVuYdIDYEpjwAAuXLMRu_1VhUcPOyaFZwVbUBAAMCA... (replace with a real file_id if you want)";
+export const DEFAULT_WELCOME_PHOTO_FILE_ID = "AgACAgUAAxkBAAP8aKb2x5jT30-r_0f8o5gW4S819_QAAmvPMRv3NzhV6s-wS7rL-7UBAAMCAAN5AAM2BA"; // Placeholder file_id if you want)
 export const NO_IMAGE_PLACEHOLDER_FILE_ID = "AgACAgUAAxkBAAIHv2iaKHlw-GnO3jlkSrnC... (replace with a real placeholder file_id if you want)"; // Placeholder for images not found
 
 // --- Main Menu Buttons ---
@@ -61,9 +61,17 @@ export const SUPPORT_MENU_BUTTONS = [
 // --- VPN Guide Constants ---
 export const VPN_GUIDE_KEY_PREFIX = "vpn_guide:"; // Key prefix for storing VPN guide steps in KV
 export const VPN_GUIDE_MENU_TEXT = "📚 <b>အောက်ပါ VPN Application များ၏ အသုံးပြုနည်းများကို ရွေးချယ်ကြည့်ရှုနိုင်ပါသည်:</b>";
-export const PUBLIC_VPN_GUIDES_BUTTON = { text: "📚 VPN အသုံးပြုနည်းလမ်းညွှန်ကို ကြည့်ရန်", callback_data: "show_vpn_guide_menu" };
-// အသုံးပြုနည်းလမ်းညွှန် အဆင့်များမှ ပင်မ Menu သို့ ပြန်သွားရန် ခလုတ်
-export const BACK_TO_VPN_GUIDE_MENU_BUTTON = { text: "↩️ နောက်သို့ (ပင်မ Menu)", callback_data: "main_menu" };
+
+// NEW: Key for storing the photo for the VPN Guide Menu (line 62)
+export const VPN_GUIDE_MENU_PHOTO_KEY = "vpn_guide_menu_photo_file_id"; 
+export const DEFAULT_VPN_GUIDE_MENU_PHOTO_FILE_ID = null; // Default to null, so no photo is sent by default.
+
+export const PUBLIC_VPN_GUIDES_BUTTON = { text: "📚 VPN အသုံးပြုနည်းလမ်းညွှန်ကို ကြည့်ရန်", callback_data: "show_vpn_guide_menu" }; // /vpnguides command အတွက် button
+
+export const BACK_TO_VPN_GUIDE_MENU_BUTTON = { text: "↩️ နောက်သို့ (VPN Guide Menu)", callback_data: "show_vpn_guide_menu" };
+
+// Default image file_id if a requested image is not found (e.g., in /showvpnguide step when no image is set)
+export const DEFAULT_PLACEHOLDER_IMAGE_FILE_ID = "AgACAgUAAxkBAAP8aKb2x5jT30-r_0f8o5gW4S819_QAAmvPMRv3NzhV6s-wS7rL-7UBAAMCAAN5AAM2BA"; // (You can replace this with your own placeholder file_id if you want)
 
 // Empty constant for BOT_API_KEY as it's not directly used here
 export const BOT_API_KEY = "";
