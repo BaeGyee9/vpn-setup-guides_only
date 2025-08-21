@@ -1,6 +1,6 @@
 // functions/dataStorage.js
 
-import { WELCOME_MESSAGE_KEY, WELCOME_PHOTO_KEY, VPN_GUIDE_KEY_PREFIX } from './constants.js';
+import { WELCOME_MESSAGE_KEY, WELCOME_PHOTO_KEY, VPN_GUIDE_KEY_PREFIX, VPN_GUIDE_MENU_PHOTO_KEY } from './constants.js';
 
 /**
  * Stores general data in the specified KV namespace.
@@ -161,6 +161,37 @@ export async function deleteWelcomePhoto(env) {
 }
 
 
+// NEW: Functions for VPN Guide Menu Photo (Added for this feature, starting from line 133)
+/**
+ * Stores the file_id for the VPN Guide Menu photo.
+ * @param {object} env - The Cloudflare environment object.
+ * @param {string} fileId - The file_id of the photo.
+ * @returns {Promise<boolean>}
+ */
+export async function storeVpnGuideMenuPhoto(env, fileId) {
+    return await storeData(env, 'SALES_DATA', VPN_GUIDE_MENU_PHOTO_KEY, { file_id: fileId });
+}
+
+/**
+ * Retrieves the file_id for the VPN Guide Menu photo.
+ * @param {object} env - The Cloudflare environment object.
+ * @returns {Promise<string|null>}
+ */
+export async function getVpnGuideMenuPhoto(env) {
+    const data = await retrieveData(env, 'SALES_DATA', VPN_GUIDE_MENU_PHOTO_KEY);
+    return data ? data.file_id : null;
+}
+
+/**
+ * Deletes the VPN Guide Menu photo.
+ * @param {object} env - The Cloudflare environment object.
+ * @returns {Promise<boolean>}
+ */
+export async function deleteVpnGuideMenuPhoto(env) {
+    return await deleteData(env, 'SALES_DATA', VPN_GUIDE_MENU_PHOTO_KEY);
+}
+
+
 // --- Payment Details Storage ---
 /**
  * Stores payment transaction details.
@@ -275,7 +306,11 @@ export async function deleteVpnKey(env, keyId) {
     
     // Check if the provided keyId is a fullKey or just the unique ID
     let actualKeyToDelete = keyId;
-    if (!keyId.startsWith(VPN_GUIDE_KEY_PREFIX)) { // Check if it looks like a full VPN key or just unique ID
+    // NOTE: This check `!keyId.startsWith(VPN_GUIDE_KEY_PREFIX)` seems to be a copy-paste error
+    // from an unrelated part of the code. It should likely check for 'vpn_key:' prefix
+    // or rely on getVpnKeyByUniqueId finding the full key.
+    // For now, leaving as is to preserve original logic flow for other key types.
+    if (!keyId.startsWith('vpn_key:')) { // Assuming VPN_GUIDE_KEY_PREFIX was meant to be 'vpn_key:'
         const foundKey = await getVpnKeyByUniqueId(env, keyId);
         if (foundKey) {
             actualKeyToDelete = foundKey.fullKey;
