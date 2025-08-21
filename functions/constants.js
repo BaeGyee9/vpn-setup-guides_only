@@ -7,8 +7,8 @@ export const TELEGRAM_API = "https://api.telegram.org/bot";
 export const ADMIN_USERNAME = "@Zero_Free_Vpn"; // Your Telegram Username (without @)
 export const SUPPORT_GROUP_LINK = "https://t.me/zero_freevpn"; // Your Telegram Support Group Link
 
-// NEW: Admin ရဲ့ Telegram Account ပြသနာမည် (ဥပမာ: "မောင်သုည")
-export const ADMIN_DISPLAY_NAME = "မောင်သုည"; // လိုချင်သော နာမည်ကို ဤနေရာတွင် ထည့်ပါ။
+// Admin ရဲ့ Telegram Account ပြသနာမည် (ဥပမာ: "မောင်သုည")
+export const ADMIN_DISPLAY_NAME = "မောင်သုည"; // ဆရာလိုချင်သော နာမည်ကို ဤနေရာတွင် ထည့်ပါ။
 
 // Bot Owner/Admin User IDs for THIS Public User Bot - Pre-filled with user's provided ID
 // These IDs will be able to use the /addvpnguide, /delvpnguide etc. commands on THIS bot.
@@ -62,7 +62,8 @@ export const SUPPORT_MENU_BUTTONS = [
 export const VPN_GUIDE_KEY_PREFIX = "vpn_guide:"; // Key prefix for storing VPN guide steps in KV
 export const VPN_GUIDE_MENU_TEXT = "📚 <b>အောက်ပါ VPN Application များ၏ အသုံးပြုနည်းများကို ရွေးချယ်ကြည့်ရှုနိုင်ပါသည်:</b>";
 export const PUBLIC_VPN_GUIDES_BUTTON = { text: "📚 VPN အသုံးပြုနည်းလမ်းညွှန်ကို ကြည့်ရန်", callback_data: "show_vpn_guide_menu" };
-export const BACK_TO_VPN_GUIDE_MENU_BUTTON = { text: "↩️ နောက်သို့ (VPN Guide Menu)", callback_data: "show_vpn_guide_menu" };
+// အသုံးပြုနည်းလမ်းညွှန် အဆင့်များမှ ပင်မ Menu သို့ ပြန်သွားရန် ခလုတ်
+export const BACK_TO_VPN_GUIDE_MENU_BUTTON = { text: "↩️ နောက်သို့ (ပင်မ Menu)", callback_data: "main_menu" };
 
 // Empty constant for BOT_API_KEY as it's not directly used here
 export const BOT_API_KEY = "";
