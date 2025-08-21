@@ -517,4 +517,3 @@ export async function listVpnOperatorButtons(env) {
     buttons.sort((a, b) => a.name.localeCompare(b.name));
     return buttons;
 }
-
