@@ -11,7 +11,9 @@ import {
     PUBLIC_VPN_GUIDES_BUTTON, // /vpnguides command အတွက် button
     SUPPORT_MENU_TEXT,
     SUPPORT_MENU_BUTTONS,
-    VPN_GUIDE_MENU_TEXT // NEW: VPN Guide Menu Text ကိုလည်း import လုပ်ပါ
+    VPN_GUIDE_MENU_TEXT, // VPN Guide Menu Text ကိုလည်း import လုပ်ပါ။
+    // NEW: Admin ရဲ့ ပြသနာမည်အတွက် constant အသစ်
+    ADMIN_DISPLAY_NAME // constants.js မှ ADMIN_DISPLAY_NAME ကို import လုပ်ပါ
 } from './constants.js';
 
 // telegramHelpers.js မှ Telegram API function များကို import လုပ်ပါ။
@@ -124,7 +126,7 @@ export async function onRequest(context) {
     } else if (request.method === "GET" && url.pathname.endsWith("/unregisterWebhook")) {
         const deleteWebhookApiUrl = `${TELEGRAM_API}${token}/deleteWebhook`;
         try {
-            const response = await fetch(deleteWebhookApiUrl);
+            const response = await await fetch(deleteWebhookApiUrl);
             const result = await response.json();
             if (response.ok && result.ok) {
                 console.log("[onRequest] Webhook unregistered successfully:", result);
@@ -176,16 +178,16 @@ export async function onRequest(context) {
                     const args = messageText.split(' ').slice(1).join(' '); // Get arguments after the command
 
                     // Public Commands (accessible by anyone)
-                    if (command === '/start' || command === '/menu' || command === '/shop') {
+                    if (command === '/start' || command === '/menu' || command === '/shop' || command === '/vpnguides') { // /vpnguides ကိုလည်း ဒီထဲထည့်လိုက်ပြီ
                         // Get custom welcome message and photo from KV, or use defaults
                         const customWelcomeMessage = await getWelcomeMessage(env);
                         const customWelcomePhotoFileId = await getWelcomePhoto(env);
 
-                        // Welcome Message မှာ Admin Username ကို Link ပုံစံဖြင့် ထည့်သွင်းရန်
+                        // Welcome Message မှာ Admin Name ကို Link ပုံစံဖြင့် ထည့်သွင်းရန်
                         // ADMIN_USERNAME က @ ပါရင် substring(1) နဲ့ ဖြုတ်ပြီး link လုပ်ရန်
-                        const adminLink = `<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">Admin ကို ဆက်သွယ်ရန်</a>`;
+                        const adminLink = `<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_DISPLAY_NAME}</a>`; // ADMIN_DISPLAY_NAME ကို အသုံးပြုပါ
                         const finalWelcomeMessage = (customWelcomeMessage || DEFAULT_WELCOME_MESSAGE) +
-                                                    `\n\n${adminLink}`; // Admin link ကို message အောက်ဆုံးမှာ ထည့်သွင်းပါ
+                                                    `\n\n<b>Admin:</b> ${adminLink}`; // Admin link ကို message အောက်ဆုံးမှာ ထည့်သွင်းပါ
 
                         const finalWelcomePhotoFileId = customWelcomePhotoFileId;
 
@@ -194,21 +196,12 @@ export async function onRequest(context) {
                         };
 
                         if (finalWelcomePhotoFileId) {
-                            // Send photo with welcome message as caption
-                            await sendPhoto(token, chatId, finalWelcomePhotoFileId, finalWelcomeMessage, null, botKeyValue);
-                            // Then send a separate message with the main menu buttons
-                            // Text ကို " " (space) တစ်ခုတည်း ပို့မယ့်အစား Main Menu Text ကို ပို့ပါမည်။
-                            await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
+                            // Send photo with welcome message as caption and also with buttons
+                            await sendPhoto(token, chatId, finalWelcomePhotoFileId, finalWelcomeMessage, replyMarkup, botKeyValue); // replyMarkup ကို sendPhoto မှာ တိုက်ရိုက်ထည့်ပါ
                         } else {
                             // If no photo, just send the welcome message text with main menu buttons
                             await sendMessage(token, chatId, finalWelcomeMessage, 'HTML', replyMarkup, botKeyValue);
                         }
-                    } else if (command === '/vpnguides') { // Handle /vpnguides command
-                        await sendMessage(token, chatId, "📚 VPN အသုံးပြုနည်းလမ်းညွှန်ကို ကြည့်ရှုနိုင်ပါသည်:", 'HTML', {
-                            inline_keyboard: [
-                                [PUBLIC_VPN_GUIDES_BUTTON]
-                            ]
-                        }, botKeyValue);
                     } else if (command === '/support') { // Handle /support command
                         await sendMessage(token, chatId, SUPPORT_MENU_TEXT, 'HTML', { inline_keyboard: SUPPORT_MENU_BUTTONS }, botKeyValue);
                     }
@@ -282,23 +275,21 @@ export async function onRequest(context) {
                         if (message.chat.type === 'private') {
                             // Re-use the /start logic to show welcome message with buttons
                             const customWelcomeMessage = await getWelcomeMessage(env);
-                            // Welcome Message မှာ Admin Username ကို Link ပုံစံဖြင့် ထည့်သွင်းရန်
-                            const adminLink = `<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">Admin ကို ဆက်သွယ်ရန်</a>`;
+                            const adminLink = `<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_DISPLAY_NAME}</a>`;
                             const finalWelcomeMessage = (customWelcomeMessage || DEFAULT_WELCOME_MESSAGE) +
-                                                        `\n\n${adminLink}`;
+                                                        `\n\n<b>Admin:</b> ${adminLink}`;
                             await sendMessage(token, chatId, finalWelcomeMessage, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS }, botKeyValue);
                         }
-                        console.log(`[onRequest] Ignoring unknown command from non-admin: ${command}`);
+                        console.log(`[onRequest] Ignoring non-command from non-admin.`);
                     }
                 } else {
                     // Non-command, non-photo messages (e.g., plain text messages in private chat)
                     if (message.chat.type === 'private') {
                         // Default response for private chat text messages, re-use /start logic
                         const customWelcomeMessage = await getWelcomeMessage(env);
-                        // Welcome Message မှာ Admin Username ကို Link ပုံစံဖြင့် ထည့်သွင်းရန်
-                        const adminLink = `<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">Admin ကို ဆက်သွယ်ရန်</a>`;
+                        const adminLink = `<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_DISPLAY_NAME}</a>`;
                         const finalWelcomeMessage = (customWelcomeMessage || DEFAULT_WELCOME_MESSAGE) +
-                                                    `\n\n${adminLink}`;
+                                                    `\n\n<b>Admin:</b> ${adminLink}`;
                         await sendMessage(token, chatId, finalWelcomeMessage, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS }, botKeyValue);
                     }
                     console.log("[onRequest] Ignoring non-command, non-photo message.");
@@ -318,10 +309,9 @@ export async function onRequest(context) {
                 if (data === 'main_menu') {
                     // Get custom welcome message and photo from KV, or use defaults
                     const customWelcomeMessage = await getWelcomeMessage(env);
-                    // Welcome Message မှာ Admin Username ကို Link ပုံစံဖြင့် ထည့်သွင်းရန်
-                    const adminLink = `<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">Admin ကို ဆက်သွယ်ရန်</a>`;
+                    const adminLink = `<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_DISPLAY_NAME}</a>`;
                     const finalWelcomeMessage = (customWelcomeMessage || DEFAULT_WELCOME_MESSAGE) +
-                                                `\n\n${adminLink}`;
+                                                `\n\n<b>Admin:</b> ${adminLink}`;
 
                     const replyMarkup = {
                         inline_keyboard: MAIN_MENU_BUTTONS
@@ -347,7 +337,7 @@ export async function onRequest(context) {
                             console.error(`[onRequest] Error editing message for main_menu: ${e.message}`);
                             // If edit fails, send a new message as a fallback
                             await sendMessage(token, chatId, finalWelcomeMessage, 'HTML', replyMarkup, botKeyValue);
-                            await answerCallbackQuery(token, callbackQuery.id, "ပင်မ Menu ကို ဖွင့်မရပါ။ ကျေးဇူးပြု၍ ပြန်လည်စမ်းသပ်ပါ။", true);
+                            await answerCallbackQuery(token, callbackQuery.id, "ပင်မ Menu ကို ဖွင့်မရပါ။ ကျေးဇူပြု၍ ပြန်လည်စမ်းသပ်ပါ။", true);
                         }
                     }
                 } else if (data === 'menu_support') {
@@ -359,7 +349,7 @@ export async function onRequest(context) {
                         console.error(`[onRequest] Error editing message for menu_support: ${e.message}`);
                         // If edit fails, send a new message as a fallback
                         await sendMessage(token, chatId, SUPPORT_MENU_TEXT, 'HTML', { inline_keyboard: SUPPORT_MENU_BUTTONS }, botKeyValue);
-                        await answerCallbackQuery(token, callbackQuery.id, "အကူအညီ Menu ကို ဖွင့်မရပါ။ ကျေးဇူးပြု၍ ပြန်လည်စမ်းသပ်ပါ။", true);
+                        await answerCallbackQuery(token, callbackQuery.id, "အကူအညီ Menu ကို ဖွင့်မရပါ။ ကျေးဇူပြု၍ ပြန်လည်စမ်းသပ်ပါ။", true);
                     }
                 }
                 // VPN Guide Callbacks
@@ -396,9 +386,9 @@ export async function onRequest(context) {
                     if (chat.type === 'group' || chat.type === 'supergroup') {
                         const welcomeMessage = await getWelcomeMessage(env) || DEFAULT_WELCOME_MESSAGE;
                         // Add admin username to group welcome message as a link
-                        const adminLink = `<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">Admin ကို ဆက်သွယ်ရန်</a>`;
+                        const adminLink = `<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_DISPLAY_NAME}</a>`;
                         const finalWelcomeMessage = welcomeMessage +
-                                                    `\n\n${adminLink}`;
+                                                    `\n\n<b>Admin:</b> ${adminLink}`;
                         await sendMessage(token, chat.id, finalWelcomeMessage, 'HTML', null, botKeyValue);
                     }
                 } else if (newChatMember.status === 'kicked' || newChatMember.status === 'left') {
