@@ -7,6 +7,9 @@ export const TELEGRAM_API = "https://api.telegram.org/bot";
 export const ADMIN_USERNAME = "@Zero_Free_Vpn"; // Your Telegram Username (without @)
 export const SUPPORT_GROUP_LINK = "https://t.me/zero_freevpn"; // Your Telegram Support Group Link
 
+// NEW: Admin ရဲ့ Telegram Account ပြသနာမည် (ဥပမာ: "မောင်သုည")
+export const ADMIN_DISPLAY_NAME = "မောင်သုည"; // လိုချင်သော နာမည်ကို ဤနေရာတွင် ထည့်ပါ။
+
 // Bot Owner/Admin User IDs for THIS Public User Bot - Pre-filled with user's provided ID
 // These IDs will be able to use the /addvpnguide, /delvpnguide etc. commands on THIS bot.
 export const OWNER_ADMIN_IDS = [7576434717, 7240495054]; // <--- REPLACE WITH YOUR OWN TELEGRAM USER IDs (e.g., [123456789, 987654321])
@@ -62,4 +65,5 @@ export const PUBLIC_VPN_GUIDES_BUTTON = { text: "📚 VPN အသုံးပြ�
 export const BACK_TO_VPN_GUIDE_MENU_BUTTON = { text: "↩️ နောက်သို့ (VPN Guide Menu)", callback_data: "show_vpn_guide_menu" };
 
 // Empty constant for BOT_API_KEY as it's not directly used here
-export const BOT_API_KEY = ""; 
+export const BOT_API_KEY = "";
+
