@@ -48,6 +48,7 @@ function splitMessage(text, chunkSize = 4000) {
 // Assumes keys are like 'vpn_guide:APPCODE:STEP_NUMBER'
 async function getAllStepNumbersForApp(env, appCode) {
     const prefix = `${VPN_GUIDE_KEY_PREFIX}${appCode}:`;
+    // VPN_GUIDE_DATA KV namespace မှ keys များကို list လုပ်ရန်
     const allKeys = await listKeys(env, 'VPN_GUIDE_DATA', prefix);
     const stepNumbers = allKeys.map(key => {
         const parts = key.split(':');
@@ -115,6 +116,7 @@ export async function handleAddVpnGuideCommand(message, token, env, botKeyValue)
         download_link: downloadLink
     };
 
+    // VPN_GUIDE_DATA KV namespace တွင် သိမ်းဆည်းရန်
     const success = await storeData(env, 'VPN_GUIDE_DATA', fullKey, guideData);
 
     if (success) {
@@ -166,6 +168,7 @@ export async function handleDelVpnGuideCommand(message, token, env, botKeyValue)
     if (stepNumberToDelete) {
         // Delete specific step
         const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${stepNumberToDelete}`;
+        // VPN_GUIDE_DATA KV namespace မှ ဖျက်ရန်
         const success = await deleteData(env, 'VPN_GUIDE_DATA', fullKey);
         if (success) {
             await sendMessage(token, chatId, `✅ VPN Guide <b>${appCode} - Step ${stepNumberToDelete}</b> ကို အောင်မြင်စွာ ဖျက်လိုက်ပါပြီ။`, 'HTML', null, botKeyValue);
@@ -183,6 +186,7 @@ export async function handleDelVpnGuideCommand(message, token, env, botKeyValue)
         let deletedCount = 0;
         for (const stepNum of allStepNumbersForApp) {
             const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${stepNum}`;
+            // VPN_GUIDE_DATA KV namespace မှ ဖျက်ရန်
             const success = await deleteData(env, 'VPN_GUIDE_DATA', fullKey);
             if (success) {
                 deletedCount++;
@@ -209,12 +213,13 @@ export async function handleListVpnGuidesCommand(message, token, env, botKeyValu
         return;
     }
 
+    // VPN_GUIDE_DATA KV namespace မှ keys များကို list လုပ်ရန်
     const allKeys = await listKeys(env, 'VPN_GUIDE_DATA', VPN_GUIDE_KEY_PREFIX);
     const appCodes = new Set();
-    const guidesByApp = {}; 
+    const guidesByApp = {};
 
     for (const key of allKeys) {
-        const parts = key.split(':'); 
+        const parts = key.split(':');
         if (parts.length === 3 && parts[0] === 'vpn_guide') {
             const currentAppCode = parts[1];
             const currentStepNumber = parseInt(parts[2], 10);
@@ -225,7 +230,7 @@ export async function handleListVpnGuidesCommand(message, token, env, botKeyValu
             guidesByApp[currentAppCode].push(currentStepNumber);
         }
     }
-    
+
     let text = "📚 <b>သိမ်းဆည်းထားသော VPN Guide များ:</b>\n\n";
     if (appCodes.size === 0) {
         text += "Guide များ မရှိသေးပါ။";
@@ -236,7 +241,7 @@ export async function handleListVpnGuidesCommand(message, token, env, botKeyValu
             text += `  - <b>${appCode}</b> (Steps: ${steps.join(', ')})\n`;
         }
     }
-    
+
     const chunks = splitMessage(text);
     for (const chunk of chunks) {
         await sendMessage(token, chatId, chunk, 'HTML', null, botKeyValue);
@@ -276,6 +281,7 @@ export async function handleAddVpnGuideDownloadCommand(message, token, env, botK
     }
 
     const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${stepNumber}`;
+    // VPN_GUIDE_DATA KV namespace မှ ပြန်ယူရန်
     const guideData = await retrieveData(env, 'VPN_GUIDE_DATA', fullKey);
 
     if (!guideData) {
@@ -285,6 +291,7 @@ export async function handleAddVpnGuideDownloadCommand(message, token, env, botK
 
     // Update the download link
     guideData.download_link = downloadUrl;
+    // VPN_GUIDE_DATA KV namespace တွင် ပြန်လည်သိမ်းဆည်းရန်
     const success = await storeData(env, 'VPN_GUIDE_DATA', fullKey, guideData);
 
     if (success) {
@@ -307,11 +314,13 @@ export async function handleAddVpnGuideDownloadCommand(message, token, env, botK
  */
 export async function handleShowVpnGuideMenu(callbackQuery, token, env, botKeyValue) {
     const chatId = callbackQuery.message.chat.id;
-    const messageId = callbackQuery.message.message_id;
+    // messageId သည် editMessageText အတွက်သာ ဖြစ်ပြီး delete လုပ်ပြီးနောက် sendMessage အတွက် မလိုအပ်ပါ။
+    // const messageId = callbackQuery.message.message_id;
 
     await answerCallbackQuery(token, callbackQuery.id, "VPN အသုံးပြုနည်းလမ်းညွှန်များကို ပြသပါမည်။", true);
 
     // Get unique app codes by correctly parsing keys from KV
+    // VPN_GUIDE_DATA KV namespace မှ keys များကို list လုပ်ရန်
     const allKeys = await listKeys(env, 'VPN_GUIDE_DATA', VPN_GUIDE_KEY_PREFIX);
     const appCodes = new Set();
     for (const key of allKeys) {
@@ -342,10 +351,13 @@ export async function handleShowVpnGuideMenu(callbackQuery, token, env, botKeyVa
         ])
     };
 
+    // messageId ဖြင့် editMessageText မလုပ်တော့ဘဲ sendMessage အသစ်ပို့ပါမည်။
+    // _middleware.js တွင် photo ပါသော message ကို delete လုပ်ပြီး handleShowVpnGuideMenu ကို ခေါ်ဆိုထားပြီးသားဖြစ်၍ ဤနေရာတွင် sendMessage သာ ခေါ်ပါ။
     try {
-        await editMessageText(token, chatId, messageId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
+        await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
     } catch (e) {
-        console.error(`[handleShowVpnGuideMenu] Error editing message (might be photo or old message): ${e.message}`);
+        console.error(`[handleShowVpnGuideMenu] Error sending message: ${e.message}`);
+        // Fallback to sending a message if any unexpected error occurs
         await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
     }
 }
@@ -376,6 +388,7 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
     await answerCallbackQuery(token, callbackQuery.id, `📚 ${appCode} Guide Step ${currentStepNumber} ကို ပြသပါမည်။`, true);
 
     const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${currentStepNumber}`;
+    // VPN_GUIDE_DATA KV namespace မှ ပြန်ယူရန်
     const guideData = await retrieveData(env, 'VPN_GUIDE_DATA', fullKey);
 
     if (!guideData) {
@@ -388,6 +401,7 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
         return;
     }
 
+    // VPN_GUIDE_DATA KV namespace မှ keys များကို list လုပ်ရန်
     const allStepNumbersForApp = await getAllStepNumbersForApp(env, appCode);
     const isFirstStep = currentStepNumber === allStepNumbersForApp[0];
     const isLastStep = currentStepNumber === allStepNumbersForApp[allStepNumbersForApp.length - 1];
@@ -447,7 +461,9 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
             await editMessageText(token, chatId, messageId, captionText, 'HTML', replyMarkup, botKeyValue);
         } catch (e) {
             console.error(`[handleShowSpecificVpnGuide] Error editing message text: ${e.message}`);
+            // If edit fails (e.g., message not found after delete), send a new message as a fallback
             await sendMessage(token, chatId, captionText, 'HTML', replyMarkup, botKeyValue);
         }
     }
 }
+
