@@ -315,7 +315,7 @@ export async function handleAddVpnGuideDownloadCommand(message, token, env, botK
 export async function handleShowVpnGuideMenu(callbackQuery, token, env, botKeyValue) {
     const chatId = callbackQuery.message.chat.id;
     // messageId သည် editMessageText အတွက်သာ ဖြစ်ပြီး delete လုပ်ပြီးနောက် sendMessage အတွက် မလိုအပ်ပါ။
-    // const messageId = callbackQuery.message.message_id;
+    // const messageId = callbackQuery.message.message_id; // For handling delete and resend in _middleware
 
     await answerCallbackQuery(token, callbackQuery.id, "VPN အသုံးပြုနည်းလမ်းညွှန်များကို ပြသပါမည်။", true);
 
@@ -334,8 +334,9 @@ export async function handleShowVpnGuideMenu(callbackQuery, token, env, botKeyVa
 
     let appButtons = [];
     if (sortedAppCodes.length > 0) {
+        // FIX: Add " အသုံးပြုနည်း" to button text
         appButtons = sortedAppCodes.map(code => [{
-            text: code,
+            text: `${code} အသုံးပြုနည်း`, // Changed here
             callback_data: `show_vpn_guide:${code}:step:1`
         }]);
     } else {
