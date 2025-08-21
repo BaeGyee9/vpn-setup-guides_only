@@ -324,7 +324,7 @@ export async function onRequest(context) {
                     await answerCallbackQuery(token, callbackQuery.id, "ပင်မ Menu သို့ ပြန်ရောက်ပါပြီ။");
 
                 } else if (data === 'menu_support') {
-                    // When going to support menu, delete previous message and send new one
+                    // When going to support menu, always delete previous message and send new one
                     try {
                         await deleteMessage(token, chatId, messageId, botKeyValue);
                         console.log(`[onRequest] Successfully deleted message ${messageId} before sending support menu.`);
