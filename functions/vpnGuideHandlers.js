@@ -83,15 +83,18 @@ export async function handleAddVpnGuideCommand(message, token, env, botKeyValue)
     const match = message.text.match(regex);
 
     if (!match) {
+        // FIX: Provide more detailed error message for incorrect format
         await sendMessage(token, chatId, `
-❌ အသုံးပြုပုံ မှားယွင်းနေပါသည်။
+❌ အသုံးပြုပုံ မှားယွင်းနေပါသည်။ (Missing quotes or extra spaces?)
 <b>အသုံးပြုနည်း:</b>
 <code>/addvpnguide &lt;app_code&gt; &lt;step_number&gt; "&lt;step_text&gt;" ["&lt;image_file_id&gt;"] ["&lt;download_link&gt;"] ["&lt;display_name&gt;"]</code>
 
-<b>ဥပမာ:</b>
+<b>ဥပမာများ:</b>
 <code>/addvpnguide NETMOD 1 "NetMod VPN application ကို install လုပ်ပါ။"</code>
 <code>/addvpnguide NETMOD 2 "VPN Configuration ဖိုင်ကို Download လုပ်ပါ။" "AgACAgUAAxkBAAIH...xyz"</code>
-<code>/addvpnguide HTTPCUSTOM 3 "HTTP Custom App ကိုဖွင့်ပြီး config ကို Import လုပ်ပါ။" "" "" "HttpCustom"</code>
+<code>/addvpnguide HTTPCUSTOM 3 "HTTP Custom App ကိုဖွင့်ပြီး config ကို Import လုပ်ပါ။" "" "" "Http Custom"</code>
+<i>(File ID သို့မဟုတ် Download Link မရှိပါက <b>""</b> (quotes အလွတ်) ထည့်ပါ။)</i>
+<i>(Command တစ်ကြောင်းလုံးကို Copy/Paste လုပ်ပြီး quotes များ မှန်ကန်ကြောင်း သေချာစစ်ပါ။)</i>
 `, 'HTML', null, botKeyValue);
         return;
     }
