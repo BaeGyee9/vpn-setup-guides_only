@@ -125,6 +125,7 @@ export async function onRequest(context) {
     } else if (request.method === "GET" && url.pathname.endsWith("/unregisterWebhook")) {
         const deleteWebhookApiUrl = `${TELEGRAM_API}${token}/deleteWebhook`;
         try {
+            // FIX: Remove duplicate 'await'
             const response = await fetch(deleteWebhookApiUrl);
             const result = await response.json();
             if (response.ok && result.ok) {
@@ -308,7 +309,6 @@ export async function onRequest(context) {
                     };
 
                     // Always delete the previous message and send a new one for main_menu
-                    // This ensures the photo is displayed if it exists and avoids editMessageText issues
                     try {
                         await deleteMessage(token, chatId, messageId, botKeyValue);
                         console.log(`[onRequest] Successfully deleted message ${messageId} before sending main_menu.`);
