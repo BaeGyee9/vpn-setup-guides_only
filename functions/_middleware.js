@@ -181,6 +181,7 @@ export async function onRequest(context) {
                     if (command === '/start' || command === '/menu' || command === '/shop' || command === '/vpnguides') {
                         // Get custom welcome message and photo from KV, or use defaults
                         const customWelcomeMessage = await getWelcomeMessage(env);
+                        // FIX: Ensure finalWelcomePhotoFileId is declared with 'const'
                         const customWelcomePhotoFileId = await getWelcomePhoto(env);
 
                         // Welcome Message မှာ Admin Name ကို Link ပုံစံဖြင့် ထည့်သွင်းရန်
@@ -192,9 +193,9 @@ export async function onRequest(context) {
                             inline_keyboard: MAIN_MENU_BUTTONS
                         };
 
-                        if (finalWelcomePhotoFileId) {
+                        if (customWelcomePhotoFileId) {
                             // Send photo with welcome message as caption and also with buttons
-                            await sendPhoto(token, chatId, finalWelcomePhotoFileId, finalWelcomeMessage, replyMarkup, botKeyValue);
+                            await sendPhoto(token, chatId, customWelcomePhotoFileId, finalWelcomeMessage, replyMarkup, botKeyValue);
                         } else {
                             // If no photo, just send the welcome message text with main menu buttons
                             await sendMessage(token, chatId, finalWelcomeMessage, 'HTML', replyMarkup, botKeyValue);
