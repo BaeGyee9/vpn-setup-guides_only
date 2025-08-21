@@ -89,6 +89,7 @@ export async function handleAddVpnGuideCommand(message, token, env, botKeyValue)
     const unquotedArgs = unquotedParts[0].split(/\s+/);
 
     // Ensure basic structure is present: /command app_code step_number "step_text"
+    // At least 3 unquoted args (command, app_code, step_number) and 1 quoted string (step_text)
     if (unquotedArgs.length < 3 || quotedStrings.length < 1) {
         await sendMessage(token, chatId, `
 ❌ အသုံးပြုပုံ မှားယွင်းနေပါသည်။ (Quotes များ သေချာစစ်ပါ။)
@@ -111,7 +112,7 @@ export async function handleAddVpnGuideCommand(message, token, env, botKeyValue)
 
     const stepText = quotedStrings[0];
     const imageFileId = quotedStrings[1] || null;
-    // FIX: Changed order based on user's suggestion
+    // Order based on user's suggestion: image_file_id, display_name, download_link
     const displayName = quotedStrings[2] || rawAppCode; // Display name is now the 3rd quoted parameter (index 2)
     const downloadLink = quotedStrings[3] || null; // Download link is now the 4th quoted parameter (index 3)
 
@@ -355,7 +356,7 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
         return;
     }
 
-    const appCode = parts[1]; // This is the uppercase code (e.g., HTTPCUSTOM)
+    const appCode = parts[1];
     const currentStepNumber = parseInt(parts[3], 10);
 
     await answerCallbackQuery(token, callbackQuery.id, `📚 ${appCode} Guide Step ${currentStepNumber} ကို ပြသပါမည်။`, true);
@@ -373,7 +374,6 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
         return;
     }
     
-    // Use the stored display_name if available, otherwise fallback to the uppercase appCode
     const displayNameForCaption = guideData.display_name || appCode;
 
     const allStepNumbersForApp = await getAllStepNumbersForApp(env, appCode);
