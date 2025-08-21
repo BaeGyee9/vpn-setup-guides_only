@@ -32,7 +32,10 @@ import {
     storeWelcomeMessage,
     deleteWelcomeMessage,
     storeWelcomePhoto,
-    deleteWelcomePhoto
+    deleteWelcomePhoto,
+    // VPN Guide Menu Photo functions
+    storeVpnGuideMenuPhoto,
+    deleteVpnGuideMenuPhoto
 } from './dataStorage.js';
 
 // vpnGuideHandlers.js မှ VPN Guide logic function များကို import လုပ်ပါ။
@@ -42,7 +45,8 @@ import {
     handleListVpnGuidesCommand,
     handleShowVpnGuideMenu, // VPN Guide menu ပြသရန်
     handleShowSpecificVpnGuide, // Specific VPN Guide Step ပြသရန်
-    handleAddVpnGuideDownloadCommand
+    // FIX: Changed import from handleAddVpnGuideDownloadCommand to handleAddVpnGuideDownloadLinkCommand
+    handleAddVpnGuideDownloadLinkCommand 
 } from './vpnGuideHandlers.js';
 
 // Global variable to store bot ID after first fetch for efficient caching
@@ -157,19 +161,27 @@ export async function onRequest(context) {
                 const chatId = message.chat.id;
                 const userId = message.from.id;
                 const messageText = message.text || '';
+                const chatType = message.chat.type; // Get chat type (private, group, supergroup, channel)
 
-                console.log(`[onRequest] Handling message update from user ${userId} in chat ${chatId}.`);
+                console.log(`[onRequest] Handling message update from user ${userId} in chat ${chatId} (Type: ${chatType}).`);
 
                 // Store env in message object for easier access in handlers
                 message.env = env;
 
-                // Handle incoming photos to return file_id for admins
-                if (message.photo && OWNER_ADMIN_IDS.includes(userId)) {
-                    // Get the largest photo available
-                    const fileId = message.photo[message.photo.length - 1].file_id;
-                    console.log(`[onRequest] Admin ${userId} sent photo with file_id: ${fileId}`);
-                    await sendMessage(token, chatId, `✅ သင်ပို့လိုက်သော ပုံ၏ File ID: \n<code>${fileId}</code>`, 'HTML', null, botKeyValue);
-                    return new Response("OK", { status: 200 }); // Process photo and return OK
+                // Handle incoming photos or documents to return file_id for admins ONLY IN PRIVATE CHAT
+                if (OWNER_ADMIN_IDS.includes(userId) && chatType === 'private') { // If admin and in private chat
+                    if (message.photo) {
+                        // Get the largest photo available
+                        const fileId = message.photo[message.photo.length - 1].file_id;
+                        console.log(`[onRequest] Admin ${userId} sent photo with file_id: ${fileId} in private chat.`);
+                        await sendMessage(token, chatId, `✅ သင်ပို့လိုက်သော ပုံ၏ File ID: \n<code>${fileId}</code>`, 'HTML', null, botKeyValue);
+                        return new Response("OK", { status: 200 }); // Process photo and return OK
+                    } else if (message.document) {
+                        const fileId = message.document.file_id;
+                        console.log(`[onRequest] Admin ${userId} sent document with file_id: ${fileId} in private chat.`);
+                        await sendMessage(token, chatId, `✅ သင်ပို့လိုက်သော Document ၏ File ID: \n<code>${fileId}</code>`, 'HTML', null, botKeyValue);
+                        return new Response("OK", { status: 200 }); // Process document and return OK
+                    }
                 }
 
                 // Command Handling
@@ -215,8 +227,9 @@ export async function onRequest(context) {
                             case '/listvpnguides':
                                 await handleListVpnGuidesCommand(message, token, env, botKeyValue);
                                 break;
+                            // FIX: Use the corrected function name for download command
                             case '/addvpnguidedownload':
-                                await handleAddVpnGuideDownloadCommand(message, token, env, botKeyValue);
+                                await handleAddVpnGuideDownloadLinkCommand(message, token, env, botKeyValue);
                                 break;
                             case '/setwelcomephoto':
                                 if (args) {
@@ -260,6 +273,28 @@ export async function onRequest(context) {
                                     await sendMessage(token, chatId, "❌ Welcome Message ဖျက်ရာတွင် အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။ (သို့မဟုတ် မရှိပါ။)", 'HTML', null, botKeyValue);
                                 }
                                 break;
+                            // NEW: Admin commands for VPN Guide Menu Photo
+                            case '/setvpnguidemenuphoto':
+                                if (args) {
+                                    const fileId = args.trim();
+                                    const success = await storeVpnGuideMenuPhoto(env, fileId);
+                                    if (success) {
+                                        await sendMessage(token, chatId, `✅ VPN Guide Menu Photo File ID <b>${fileId}</b> ကို အောင်မြင်စွာ သိမ်းဆည်းလိုက်ပါပြီ။`, 'HTML', null, botKeyValue);
+                                    } else {
+                                        await sendMessage(token, chatId, "❌ VPN Guide Menu Photo သိမ်းဆည်းရာတွင် အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။", 'HTML', null, botKeyValue);
+                                    }
+                                } else {
+                                    await sendMessage(token, chatId, "❌ `/setvpnguidemenuphoto <file_id>` ပုံစံ မှန်ကန်စွာ ထည့်သွင်းပါ။", 'HTML', null, botKeyValue);
+                                }
+                                break;
+                            case '/delvpnguidemenuphoto':
+                                const deleteVpnGuideMenuPhotoSuccess = await deleteVpnGuideMenuPhoto(env);
+                                if (deleteVpnGuideMenuPhotoSuccess) {
+                                    await sendMessage(token, chatId, "✅ VPN Guide Menu Photo ကို အောင်မြင်စွာ ဖျက်လိုက်ပါပြီ။", 'HTML', null, botKeyValue);
+                                } else {
+                                    await sendMessage(token, chatId, "❌ VPN Guide Menu Photo ဖျက်ရာတွင် အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။ (သို့မဟုတ် မရှိပါ။)", 'HTML', null, botKeyValue);
+                                }
+                                break;
                             default:
                                 await sendMessage(token, chatId, "❌ မသိသော Admin command ဖြစ်ပါသည်။", 'HTML', null, botKeyValue);
                                 break;
@@ -273,10 +308,11 @@ export async function onRequest(context) {
                                                         `\n\n<b>Admin:</b> ${adminLink}`;
                             await sendMessage(token, chatId, finalWelcomeMessage, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS }, botKeyValue);
                         }
-                        console.log(`[onRequest] Ignoring non-command from non-admin.`);
+                        console.log(`[onRequest] Ignoring non-command from non-admin or non-private chat.`);
                     }
                 } else {
-                    // Non-command, non-photo messages (e.g., plain text messages in private chat)
+                    // Non-command, non-photo/document messages (e.g., plain text messages in private chat)
+                    // If not photo/document, and not a command, and in private chat, send main menu.
                     if (message.chat.type === 'private') {
                         const customWelcomeMessage = await getWelcomeMessage(env);
                         const adminLink = `<a href="https://t.me/${ADMIN_USERNAME.substring(1)}">${ADMIN_DISPLAY_NAME}</a>`;
@@ -284,7 +320,7 @@ export async function onRequest(context) {
                                                     `\n\n<b>Admin:</b> ${adminLink}`;
                         await sendMessage(token, chatId, finalWelcomeMessage, 'HTML', { inline_keyboard: MAIN_MENU_BUTTONS }, botKeyValue);
                     }
-                    console.log("[onRequest] Ignoring non-command, non-photo message.");
+                    console.log("[onRequest] Ignoring non-command, non-photo, non-document message in group chat.");
                 }
 
             } else if (update.callback_query) {
@@ -385,3 +421,4 @@ export async function onRequest(context) {
         return new Response("This is a Telegram bot webhook endpoint. Please send POST requests or access /registerWebhook or /unregisterWebhook.", { status: 200 });
     }
 }
+
