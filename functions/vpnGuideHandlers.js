@@ -347,7 +347,7 @@ export async function handleShowVpnGuideMenu(callbackQuery, token, env, botKeyVa
 
     const replyMarkup = {
         inline_keyboard: appButtons.concat([
-            [{ text: "↩️ နောက်သို့ (ပင်မ Menu)", callback_data: "main_menu" }]
+            [{ text: "↩️ နောက်သို့ (Main Menu)", callback_data: "main_menu" }]
         ])
     };
 
@@ -415,7 +415,7 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
     // Previous button
     if (!isFirstStep && previousStepNumber !== null) {
         navButtons.push({
-            text: "⬅️ အရင် Step",
+            text: "⬅️ Prev",
             callback_data: `show_vpn_guide:${appCode}:step:${previousStepNumber}`
         });
     }
@@ -423,7 +423,7 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
     // Next button
     if (!isLastStep && nextStepNumber !== null) {
         navButtons.push({
-            text: "နောက် Step ➡️",
+            text: "Next ➡️",
             callback_data: `show_vpn_guide:${appCode}:step:${nextStepNumber}`
         });
     }
