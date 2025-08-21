@@ -279,6 +279,70 @@ export async function handleListVpnGuidesCommand(message, token, env, botKeyValu
     }
 }
 
+// FIX: Export the handleShowVpnGuideMenu function
+export async function handleShowVpnGuideMenu(message, token, env, botKeyValue) {
+    const chatId = message.chat.id;
+    const userId = message.from.id; // User ID is not directly used for admin check here, but can be for logging/future features
+
+    // VPN_GUIDE_DATA KV namespace မှ keys များကို list လုပ်ရန်
+    const allKeys = await listKeys(env, 'VPN_GUIDE_DATA', VPN_GUIDE_KEY_PREFIX);
+    const appDisplayNamesMap = new Map();
+
+    const uniqueAppCodes = new Set();
+    for (const key of allKeys) {
+        const parts = key.split(':');
+        // Make sure it's a guide key (e.g., "vpn_guide:APPCODE:STEP_NUMBER")
+        if (parts.length === 3 && parts[0] === 'vpn_guide') {
+            uniqueAppCodes.add(parts[1]);
+        }
+    }
+
+    // Attempt to get the display name from the first step of each guide
+    for (const appCode of uniqueAppCodes) {
+        const firstStepKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:1`;
+        const guideData = await retrieveData(env, 'VPN_GUIDE_DATA', firstStepKey);
+        if (guideData && guideData.display_name) {
+            appDisplayNamesMap.set(appCode, guideData.display_name);
+        } else {
+            // Fallback to appCode if display_name is not found for the first step
+            appDisplayNamesMap.set(appCode, appCode); 
+        }
+    }
+    
+    const sortedAppCodes = Array.from(appDisplayNamesMap.keys()).sort();
+
+    let appButtons = [];
+    if (sortedAppCodes.length > 0) {
+        appButtons = sortedAppCodes.map(code => {
+            const displayName = appDisplayNamesMap.get(code);
+            return [{
+                text: `${displayName} အသုံးပြုနည်း`,
+                callback_data: `show_vpn_guide:${code}:step:1`
+            }];
+        });
+    } else {
+        appButtons.push([{
+            text: "❌ VPN Guide များ မရှိသေးပါ။ Admin ကို ဆက်သွယ်ပါ။",
+            url: `https://t.me/${ADMIN_USERNAME.substring(1)}`
+        }]);
+    }
+
+    const replyMarkup = {
+        inline_keyboard: appButtons.concat([
+            [{ text: "↩️ နောက်သို့ (ပင်မ Menu)", callback_data: "main_menu" }]
+        ])
+    };
+
+    try {
+        await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
+    } catch (e) {
+        console.error(`[handleShowVpnGuideMenu] Error sending message: ${e.message}`);
+        // Fallback in case editMessageText fails (e.g., message too old, or not sent by bot originally)
+        await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
+    }
+}
+
+
 /**
  * Handles the /addvpnguidedownload command to add a download link to a guide.
  * Command format: /addvpnguidedownload <app_code> <step_number> <download_url>
@@ -436,4 +500,3 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
         }
     }
 }
-
