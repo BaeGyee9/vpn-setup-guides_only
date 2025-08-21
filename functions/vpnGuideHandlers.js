@@ -281,62 +281,6 @@ export async function handleListVpnGuidesCommand(message, token, env, botKeyValu
 }
 
 /**
- * Handles the /addvpnguidedownload command to add a download link to a guide.
- * Command format: /addvpnguidedownload <app_code> <step_number> <download_url>
- * @param {object} message - The Telegram message object.
- * @param {string} token - The Telegram bot token.
- * @param {object} env - The Cloudflare environment object.
- * @param {string} botKeyValue - The bot key for API calls (can be null for guide bot).
- */
-export async function handleAddVpnGuideDownloadCommand(message, token, env, botKeyValue) {
-    const chatId = message.chat.id;
-    const userId = message.from.id;
-    const parts = message.text.split(' ');
-
-    if (!OWNER_ADMIN_IDS.includes(userId)) {
-        await sendMessage(token, chatId, "❌ သင်သည် Admin မဟုတ်ပါ။ ဤ command ကို အသုံးပြုခွင့်မရှိပါ။", 'HTML', null, botKeyValue);
-        return;
-    }
-
-    if (parts.length !== 4) {
-        await sendMessage(token, chatId, "❌ Command ပုံစံ မှားယွင်းနေပါသည်။ ပုံစံမှန်မှာ: `/addvpnguidedownload <app_code> <step_number> <download_url>`", 'Markdown', null, botKeyValue);
-        return;
-    }
-
-    const appCode = parts[1].toUpperCase();
-    const stepNumber = parseInt(parts[2], 10);
-    const downloadUrl = parts[3];
-
-    if (isNaN(stepNumber)) {
-        await sendMessage(token, chatId, "❌ `step_number` မှာ ကိန်းဂဏန်းဖြစ်ရပါမည်။", 'HTML', null, botKeyValue);
-        return;
-    }
-
-    const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${stepNumber}`;
-    // VPN_GUIDE_DATA KV namespace မှ ပြန်ယူရန်
-    const guideData = await retrieveData(env, 'VPN_GUIDE_DATA', fullKey);
-
-    if (!guideData) {
-        await sendMessage(token, chatId, `❌ <b>${appCode}</b> Guide Step <b>${stepNumber}</b> ကို ရှာမတွေ့ပါ။`, 'HTML', null, botKeyValue);
-        return;
-    }
-
-    // Update the download link
-    guideData.download_link = downloadUrl;
-    // VPN_GUIDE_DATA KV namespace တွင် ပြန်လည်သိမ်းဆည်းရန်
-    const success = await storeData(env, 'VPN_GUIDE_DATA', fullKey, guideData);
-
-    if (success) {
-        await sendMessage(token, chatId, `✅ <b>${appCode}</b> Guide Step <b>${stepNumber}</b> အတွက် Download Link ကို အောင်မြင်စွာ ထည့်သွင်းလိုက်ပါပြီ။`, 'HTML', null, botKeyValue);
-    } else {
-        await sendMessage(token, chatId, `❌ Download Link ကို သိမ်းဆည်းရာတွင် အမှားအယွင်းတစ်ခု ဖြစ်ပွားခဲ့ပါသည်။`, 'HTML', null, botKeyValue);
-    }
-}
-
-
-// --- User-Facing Functions ---
-
-/**
  * Handles the callback query to show a specific VPN guide step.
  * Command format: 'show_vpn_guide:<app_code>:step:<step_number>'
  * @param {object} callbackQuery - The Telegram callback query object.
