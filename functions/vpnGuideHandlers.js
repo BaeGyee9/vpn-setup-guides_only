@@ -279,12 +279,22 @@ export async function handleListVpnGuidesCommand(message, token, env, botKeyValu
     }
 }
 
-// FIX: Export the handleShowVpnGuideMenu function
-export async function handleShowVpnGuideMenu(message, token, env, botKeyValue) {
-    const chatId = message.chat.id;
-    const userId = message.from.id; // User ID is not directly used for admin check here, but can be for logging/future features
+// FIX: handleShowVpnGuideMenu function ကို ပြန်လည်ပြင်ဆင်ထားသည်။
+export async function handleShowVpnGuideMenu(update, token, env, botKeyValue) {
+    // ဤနေရာတွင် callbackQuery.message ကို တိုက်ရိုက်မသုံးတော့ဘဲ chat ID ကို update object မှတဆင့် ရယူသည်
+    // ဤနည်းလမ်းသည် message သို့မဟုတ် callback_query နှစ်ခုလုံးအတွက် အဆင်ပြေစေသည်
+    const chatId = update.callback_query?.message?.chat?.id || update.message?.chat?.id;
 
-    // VPN_GUIDE_DATA KV namespace မှ keys များကို list လုပ်ရန်
+    if (!chatId) {
+        console.error(`[handleShowVpnGuideMenu] Error: Could not get chatId from update object.`);
+        return;
+    }
+
+    // `update.callback_query` object ရှိမှသာ callback query အတွက် `answerCallbackQuery` ကို ခေါ်ရန်
+    if (update.callback_query) {
+        await answerCallbackQuery(token, update.callback_query.id, "📚 VPN Guide Menu ကို ပြသပါမည်။", false);
+    }
+    
     const allKeys = await listKeys(env, 'VPN_GUIDE_DATA', VPN_GUIDE_KEY_PREFIX);
     const appDisplayNamesMap = new Map();
 
@@ -332,12 +342,18 @@ export async function handleShowVpnGuideMenu(message, token, env, botKeyValue) {
             [{ text: "↩️ နောက်သို့ (ပင်မ Menu)", callback_data: "main_menu" }]
         ])
     };
-
-    try {
-        await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
-    } catch (e) {
-        console.error(`[handleShowVpnGuideMenu] Error sending message: ${e.message}`);
-        // Fallback in case editMessageText fails (e.g., message too old, or not sent by bot originally)
+    
+    // Check if the message is from a callback query to edit the message
+    if (update.callback_query && update.callback_query.message) {
+        try {
+            await editMessageText(token, chatId, update.callback_query.message.message_id, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
+        } catch (e) {
+            console.error(`[handleShowVpnGuideMenu] Error editing message text: ${e.message}`);
+            // Fallback in case editMessageText fails (e.g., message too old, or not sent by bot originally)
+            await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
+        }
+    } else {
+        // Otherwise, just send a new message
         await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
     }
 }
