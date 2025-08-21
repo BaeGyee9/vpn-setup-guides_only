@@ -63,7 +63,7 @@ async function getAllStepNumbersForApp(env, appCode) {
 
 /**
  * Handles the /addvpnguide command to store a new VPN usage guide step.
- * Command format: /addvpnguide <app_code> <step_number> "<step_text>" ["<image_file_id>"] ["<download_link>"] ["<display_name>"]
+ * Command format: /addvpnguide <app_code> <step_number> "<step_text>" ["<image_file_id>"] ["<display_name>"] ["<download_link>"]
  * @param {object} message - The Telegram message object.
  * @param {string} token - The Telegram bot token.
  * @param {object} env - The Cloudflare environment object (should have VPN_GUIDE_DATA bound).
@@ -78,35 +78,47 @@ export async function handleAddVpnGuideCommand(message, token, env, botKeyValue)
         return;
     }
 
-    // Updated regex to optionally capture display_name as the 7th group
-    const regex = /^\/addvpnguide\s+([^\s]+)\s+([0-9]+)\s+"([^"]+)"(?:\s+"([^"]+)")?(?:\s+"([^"]+)")?(?:\s+"([^"]+)")?$/;
-    const match = message.text.match(regex);
+    // --- NEW: More robust parsing logic to handle potential invisible characters or odd formatting ---
+    // This approach finds all quoted strings first, then handles the unquoted ones.
+    const text = message.text;
+    const quotedMatches = [...text.matchAll(/"([^"]*)"/g)];
+    const quotedStrings = quotedMatches.map(match => match[1]);
 
-    if (!match) {
-        // FIX: Provide more detailed error message for incorrect format
+    // Split the text by spaces, but only the parts outside of the quotes
+    const unquotedParts = text.split(/"[^"]*"/).map(s => s.trim()).filter(Boolean);
+    const unquotedArgs = unquotedParts[0].split(/\s+/);
+
+    // Ensure basic structure is present: /command app_code step_number "step_text"
+    if (unquotedArgs.length < 3 || quotedStrings.length < 1) {
         await sendMessage(token, chatId, `
-❌ အသုံးပြုပုံ မှားယွင်းနေပါသည်။ (Missing quotes or extra spaces?)
+❌ အသုံးပြုပုံ မှားယွင်းနေပါသည်။ (Quotes များ သေချာစစ်ပါ။)
 <b>အသုံးပြုနည်း:</b>
-<code>/addvpnguide &lt;app_code&gt; &lt;step_number&gt; "&lt;step_text&gt;" ["&lt;image_file_id&gt;"] ["&lt;download_link&gt;"] ["&lt;display_name&gt;"]</code>
+<code>/addvpnguide &lt;app_code&gt; &lt;step_number&gt; "&lt;step_text&gt;" ["&lt;image_file_id&gt;"] ["&lt;display_name&gt;"] ["&lt;download_link&gt;"]</code>
 
 <b>ဥပမာများ:</b>
 <code>/addvpnguide NETMOD 1 "NetMod VPN application ကို install လုပ်ပါ။"</code>
-<code>/addvpnguide NETMOD 2 "VPN Configuration ဖိုင်ကို Download လုပ်ပါ။" "AgACAgUAAxkBAAIH...xyz"</code>
-<code>/addvpnguide HTTPCUSTOM 3 "HTTP Custom App ကိုဖွင့်ပြီး config ကို Import လုပ်ပါ။" "" "" "Http Custom"</code>
-<i>(File ID သို့မဟုတ် Download Link မရှိပါက <b>""</b> (quotes အလွတ်) ထည့်ပါ။)</i>
+<code>/addvpnguide NETMOD 2 "VPN Configuration ဖိုင်ကို Download လုပ်ပါ။" "AgACAgUAAxkBAAIH...xyz" "NETMOD"</code>
+<code>/addvpnguide HTTPCUSTOM 3 "HTTP Custom App ကိုဖွင့်ပြီး config ကို Import လုပ်ပါ။" "" "Http Custom" "https://example.com/httpcustom.apk"</code>
+<i>(မလိုအပ်သော parameters များအတွက် <b>""</b> (quotes အလွတ်) ထည့်ပါ။)</i>
 <i>(Command တစ်ကြောင်းလုံးကို Copy/Paste လုပ်ပြီး quotes များ မှန်ကန်ကြောင်း သေချာစစ်ပါ။)</i>
 `, 'HTML', null, botKeyValue);
         return;
     }
 
-    const rawAppCode = match[1]; // e.g., "HttpCustom"
-    const appCodeForStorage = rawAppCode.toUpperCase(); // e.g., "HTTPCUSTOM" - for KV key prefix consistency
-    const stepNumber = parseInt(match[2], 10);
-    const stepText = match[3];
-    const imageFileId = match[4] || null;
-    const downloadLink = match[5] || null;
-    // Use the provided display name (match[6]), or fallback to the rawAppCode if not provided
-    const displayName = match[6] || rawAppCode; 
+    const rawAppCode = unquotedArgs[1];
+    const appCodeForStorage = rawAppCode.toUpperCase();
+    const stepNumber = parseInt(unquotedArgs[2], 10);
+
+    const stepText = quotedStrings[0];
+    const imageFileId = quotedStrings[1] || null;
+    // FIX: Changed order based on user's suggestion
+    const displayName = quotedStrings[2] || rawAppCode; // Display name is now the 3rd quoted parameter (index 2)
+    const downloadLink = quotedStrings[3] || null; // Download link is now the 4th quoted parameter (index 3)
+
+    if (isNaN(stepNumber)) {
+        await sendMessage(token, chatId, "❌ Step Number မှာ ကိန်းဂဏန်းဖြစ်ရပါမည်။", 'HTML', null, botKeyValue);
+        return;
+    }
 
     // Correct key format: vpn_guide:APPCODE_UPPERCASE:STEP_NUMBER
     const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCodeForStorage}:${stepNumber}`;
@@ -114,10 +126,9 @@ export async function handleAddVpnGuideCommand(message, token, env, botKeyValue)
         text: stepText,
         image_file_id: imageFileId,
         download_link: downloadLink,
-        display_name: displayName // Store the flexible display name
+        display_name: displayName
     };
 
-    // VPN_GUIDE_DATA KV namespace တွင် သိမ်းဆည်းရန်
     const success = await storeData(env, 'VPN_GUIDE_DATA', fullKey, guideData);
 
     if (success) {
@@ -216,36 +227,55 @@ export async function handleListVpnGuidesCommand(message, token, env, botKeyValu
 
     // VPN_GUIDE_DATA KV namespace မှ keys များကို list လုပ်ရန်
     const allKeys = await listKeys(env, 'VPN_GUIDE_DATA', VPN_GUIDE_KEY_PREFIX);
-    const appCodes = new Set();
-    const guidesByApp = {};
+    const appDisplayNamesMap = new Map();
 
+    const uniqueAppCodes = new Set();
     for (const key of allKeys) {
         const parts = key.split(':');
         if (parts.length === 3 && parts[0] === 'vpn_guide') {
-            const currentAppCode = parts[1];
-            const currentStepNumber = parseInt(parts[2], 10);
-            appCodes.add(currentAppCode);
-            if (!guidesByApp[currentAppCode]) {
-                guidesByApp[currentAppCode] = [];
-            }
-            guidesByApp[currentAppCode].push(currentStepNumber);
+            uniqueAppCodes.add(parts[1]);
         }
     }
 
-    let text = "📚 <b>သိမ်းဆည်းထားသော VPN Guide များ:</b>\n\n";
-    if (appCodes.size === 0) {
-        text += "Guide များ မရှိသေးပါ။";
+    for (const appCode of uniqueAppCodes) {
+        const firstStepKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:1`;
+        const guideData = await retrieveData(env, 'VPN_GUIDE_DATA', firstStepKey);
+        if (guideData && guideData.display_name) {
+            appDisplayNamesMap.set(appCode, guideData.display_name);
+        } else {
+            appDisplayNamesMap.set(appCode, appCode); 
+        }
+    }
+    
+    const sortedAppCodes = Array.from(appDisplayNamesMap.keys()).sort();
+
+    let appButtons = [];
+    if (sortedAppCodes.length > 0) {
+        appButtons = sortedAppCodes.map(code => {
+            const displayName = appDisplayNamesMap.get(code);
+            return [{
+                text: `${displayName} အသုံးပြုနည်း`,
+                callback_data: `show_vpn_guide:${code}:step:1`
+            }];
+        });
     } else {
-        const sortedAppCodes = Array.from(appCodes).sort();
-        for (const appCode of sortedAppCodes) {
-            const steps = guidesByApp[appCode].sort((a, b) => a - b);
-            text += `  - <b>${appCode}</b> (Steps: ${steps.join(', ')})\n`;
-        }
+        appButtons.push([{
+            text: "❌ VPN Guide များ မရှိသေးပါ။ Admin ကို ဆက်သွယ်ပါ။",
+            url: `https://t.me/${ADMIN_USERNAME.substring(1)}`
+        }]);
     }
 
-    const chunks = splitMessage(text);
-    for (const chunk of chunks) {
-        await sendMessage(token, chatId, chunk, 'HTML', null, botKeyValue);
+    const replyMarkup = {
+        inline_keyboard: appButtons.concat([
+            [{ text: "↩️ နောက်သို့ (ပင်မ Menu)", callback_data: "main_menu" }]
+        ])
+    };
+
+    try {
+        await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
+    } catch (e) {
+        console.error(`[handleShowVpnGuideMenu] Error sending message: ${e.message}`);
+        await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
     }
 }
 
@@ -306,75 +336,6 @@ export async function handleAddVpnGuideDownloadCommand(message, token, env, botK
 // --- User-Facing Functions ---
 
 /**
- * Handles the callback query to show the VPN guide menu.
- * Command format: 'show_vpn_guide_menu'
- * @param {object} callbackQuery - The Telegram callback query object.
- * @param {string} token - The Telegram bot token.
- * @param {object} env - The Cloudflare environment object.
- * @param {string} botKeyValue - The bot key for API calls (can be null for guide bot).
- */
-export async function handleShowVpnGuideMenu(callbackQuery, token, env, botKeyValue) {
-    const chatId = callbackQuery.message.chat.id;
-
-    await answerCallbackQuery(token, callbackQuery.id, "VPN အသုံးပြုနည်းလမ်းညွှန်များကို ပြသပါမည်။", true);
-
-    // Get unique app codes and their display names
-    const allKeys = await listKeys(env, 'VPN_GUIDE_DATA', VPN_GUIDE_KEY_PREFIX);
-    const appDisplayNamesMap = new Map(); // Map to store {UPPERCASE_CODE: DISPLAY_NAME}
-
-    // Fetch display names by checking step 1 for each app code
-    const uniqueAppCodes = new Set();
-    for (const key of allKeys) {
-        const parts = key.split(':');
-        if (parts.length === 3 && parts[0] === 'vpn_guide') {
-            uniqueAppCodes.add(parts[1]); // Add the uppercase APPCODE
-        }
-    }
-
-    for (const appCode of uniqueAppCodes) {
-        const firstStepKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:1`;
-        const guideData = await retrieveData(env, 'VPN_GUIDE_DATA', firstStepKey);
-        if (guideData && guideData.display_name) {
-            appDisplayNamesMap.set(appCode, guideData.display_name);
-        } else {
-            // Fallback to uppercase appCode if no display_name found for step 1
-            appDisplayNamesMap.set(appCode, appCode); 
-        }
-    }
-    
-    const sortedAppCodes = Array.from(appDisplayNamesMap.keys()).sort(); // Sort by uppercase code for consistency
-
-    let appButtons = [];
-    if (sortedAppCodes.length > 0) {
-        appButtons = sortedAppCodes.map(code => {
-            const displayName = appDisplayNamesMap.get(code); // Get the stored display name
-            return [{
-                text: `${displayName} အသုံးပြုနည်း`, // Use display_name here
-                callback_data: `show_vpn_guide:${code}:step:1`
-            }];
-        });
-    } else {
-        appButtons.push([{
-            text: "❌ VPN Guide များ မရှိသေးပါ။ Admin ကို ဆက်သွယ်ပါ။",
-            url: `https://t.me/${ADMIN_USERNAME.substring(1)}` // Link to Admin
-        }]);
-    }
-
-    const replyMarkup = {
-        inline_keyboard: appButtons.concat([
-            [{ text: "↩️ နောက်သို့ (ပင်မ Menu)", callback_data: "main_menu" }]
-        ])
-    };
-
-    try {
-        await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
-    } catch (e) {
-        console.error(`[handleShowVpnGuideMenu] Error sending message: ${e.message}`);
-        await sendMessage(token, chatId, VPN_GUIDE_MENU_TEXT, 'HTML', replyMarkup, botKeyValue);
-    }
-}
-
-/**
  * Handles the callback query to show a specific VPN guide step.
  * Command format: 'show_vpn_guide:<app_code>:step:<step_number>'
  * @param {object} callbackQuery - The Telegram callback query object.
@@ -400,7 +361,6 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
     await answerCallbackQuery(token, callbackQuery.id, `📚 ${appCode} Guide Step ${currentStepNumber} ကို ပြသပါမည်။`, true);
 
     const fullKey = `${VPN_GUIDE_KEY_PREFIX}${appCode}:${currentStepNumber}`;
-    // VPN_GUIDE_DATA KV namespace မှ ပြန်ယူရန်
     const guideData = await retrieveData(env, 'VPN_GUIDE_DATA', fullKey);
 
     if (!guideData) {
@@ -416,7 +376,6 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
     // Use the stored display_name if available, otherwise fallback to the uppercase appCode
     const displayNameForCaption = guideData.display_name || appCode;
 
-    // VPN_GUIDE_DATA KV namespace မှ keys များကို list လုပ်ရန်
     const allStepNumbersForApp = await getAllStepNumbersForApp(env, appCode);
     const isFirstStep = currentStepNumber === allStepNumbersForApp[0];
     const isLastStep = currentStepNumber === allStepNumbersForApp[allStepNumbersForApp.length - 1];
@@ -427,7 +386,6 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
     let dynamicButtons = [];
     let navButtons = [];
 
-    // Previous button
     if (!isFirstStep && previousStepNumber !== null) {
         navButtons.push({
             text: "⬅️ အရင် Step",
@@ -435,7 +393,6 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
         });
     }
 
-    // Next button
     if (!isLastStep && nextStepNumber !== null) {
         navButtons.push({
             text: "နောက် Step ➡️",
@@ -447,7 +404,6 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
         dynamicButtons.push(navButtons);
     }
 
-    // Add download link button if available
     if (guideData.download_link) {
         dynamicButtons.push([{
             text: "⬇️ Download Link",
@@ -461,7 +417,6 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
         inline_keyboard: dynamicButtons
     };
 
-    // Use display_nameForCaption for the caption
     const captionText = `📚 <b>${displayNameForCaption} - အသုံးပြုနည်း (Step ${currentStepNumber}/${allStepNumbersForApp.length}):</b>\n\n${guideData.text}`;
 
     if (guideData.image_file_id) {
@@ -477,7 +432,6 @@ export async function handleShowSpecificVpnGuide(callbackQuery, token, env, botK
             await editMessageText(token, chatId, messageId, captionText, 'HTML', replyMarkup, botKeyValue);
         } catch (e) {
             console.error(`[handleShowSpecificVpnGuide] Error editing message text: ${e.message}`);
-            // If edit fails (e.g., message not found after delete), send a new message as a fallback
             await sendMessage(token, chatId, captionText, 'HTML', replyMarkup, botKeyValue);
         }
     }
